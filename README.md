@@ -78,7 +78,7 @@ Requires the Expo Go app.
 4. Start the mobile app:
     npx expo start
 5. Scan the QR code in Expo Go to open BeeLine on your device.
-    If rewuests fail, restart with cache cleared:
+    If requests fail, restart with cache cleared:
     npx expo start -c
 
 ## Contributors
