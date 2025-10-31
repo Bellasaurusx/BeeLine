@@ -54,6 +54,7 @@ Requires the Expo Go app.
 ## Requirements
 - Node.js (LTS recommended)
 - Git
+- Expo Go (mobile testing)
 - PostgreSQL database hosted on Render
 - Expo CLI installed globally:
     npm install -g expo-cli
@@ -63,17 +64,22 @@ Requires the Expo Go app.
     cd BeeLine/api
 2. Install dependencies:
     npm install
-3. Start the backend server:
+3. Create a .env file. Duplicate from api/.env.example.
+4. Start the backend server:
     npm run dev
-4. The API will run at http://localhost:3000
+5. The API will run at http://localhost:3000
 
 ### Mobile Environment Setup
-1. Create a .env file in BeeLine/mobile:
-    API_URL=http://<your-computer-LAN-IP>:3000
-    Example:
-    API_URL=http://192.168.1.45:3000
-    (Use your machine's LAN IP, not localhost, so Expo Go can reach the backend.)
-2. Restart the Expo server if needed.
+1. Navigate to mobile folder:
+    cd BeeLine/Mobile
+2. Install dependencies:
+    npm install
+3. Create a .env file. Duplicate from mobile/.env.example.
+4. Start the mobile app:
+    npx expo start
+5. Scan the QR code in Expo Go to open BeeLine on your device.
+    If rewuests fail, restart with cache cleared:
+    npx expo start -c
 
 ## Contributors
 - Marcos Luna
