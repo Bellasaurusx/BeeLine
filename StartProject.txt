@@ -1,0 +1,9 @@
+
+*MAKE SURE YOURE IN MOBILE FOLDER**
+- start node - 
+1: cmd terminal
+2: cd mobile( or wherever the packages.json is located)
+3: npx expo start
+4: scan qr code
+
+
