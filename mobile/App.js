@@ -9,14 +9,15 @@ export default function App() {
   const apiUrl =
     (Constants?.expoConfig?.extra && Constants.expoConfig.extra.EXPO_PUBLIC_API_URL) ||
     (Constants?.manifest2?.extra && Constants.manifest2.extra.EXPO_PUBLIC_API_URL) ||
-    ""; 
+    "";
 
   useEffect(() => {
     let cancelled = false;
     async function run() {
       try {
         if (!apiUrl) throw new Error("API URL not set in app.json extra.EXPO_PUBLIC_API_URL");
-        const res = await fetch(`${apiUrl}/health`);
+        const res = await fetch(`${apiUrl}/health`, { method: "GET" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const j = await res.json();
         if (!cancelled) setStatus(j?.status || "unknown");
       } catch (e) {
@@ -41,3 +42,4 @@ export default function App() {
     </SafeAreaView>
   );
 }
+
