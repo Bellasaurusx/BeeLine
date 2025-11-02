@@ -12,7 +12,7 @@ BeeLine encourges ecological awareness through plant identification and pollinat
 - Sustainability/ecological tips displayed alongside plant info
 - Light/Dark mode theme
 
-### MVP (PLanned First Milestone)
+### MVP (Planned First Milestone)
 - Capture or upload a plant image
 - Identify plant using the iNaturlist API
 - Display species details
