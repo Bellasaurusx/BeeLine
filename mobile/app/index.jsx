@@ -1,20 +1,25 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import Logo from '../assets/Logo.png';
+import { Link } from 'expo-router'
 
 export default function Home() {
   return (
     <View style={styles.container}>
       <Image source={Logo} style={styles.img} />
 
-      <Text style={styles.title}>BeeLine</Text>
+      <Text style={[styles.title, {color: 'red'}]}>BeeLine</Text>
 
-      <Text style={{ marginTop: 10, marginBottom: 30 }}>asfdewf</Text>
+      <Text style={{ marginTop: 10, marginBottom: 30 }}>A Bee App</Text>
 
       <View style={styles.card}>
-        <Text>This is a card.</Text>
+              <Link href="camera">Camera</Link>
       </View>
+
+      <Link href="about" style={styles.Link}>About Page</Link>
+      <Link href="contact" style={styles.Link}>Contact Page</Link>
     </View>
+
   );
 }
 
@@ -47,4 +52,9 @@ const styles = StyleSheet.create({
     height: 120,
     resizeMode: 'contain',
   },
+
+      Link:{
+        marginVertical: 10,
+        borderBottomWidth: 1,
+    }
 });
