@@ -14,7 +14,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Link } from "expo-router";
 
 
-const PLANTNET_API_KEY = "enter API here";
+const PLANTNET_API_KEY = "2b10BuvkFTkWr8yTFdYCsSQC";
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
 
 
