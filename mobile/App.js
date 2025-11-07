@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { SafeAreaView, Text, StatusBar } from "react-native";
+import { SafeAreaView, Text, StatusBar, View } from "react-native";
 import Constants from "expo-constants";
+import MapScreen from "./src/screens/MapScreen";
+
 
 export default function App() {
   const [status, setStatus] = useState("checking…");
@@ -32,13 +34,18 @@ export default function App() {
   }, [apiUrl]);
 
   return (
-    <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff", padding: 16 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff", padding: 16 }}>
       <StatusBar barStyle="dark-content" />
-      <Text style={{ fontSize: 24, marginBottom: 10 }}>BeeLine</Text>
-      <Text style={{ fontSize: 16, marginBottom: 6 }}>API status: {status}</Text>
+
+      <Text style={{ fontSize: 24, marginBottom: 10, textAlign: "center" }}>BeeLine</Text>
+      <Text style={{ fontSize: 16, marginBottom: 6, textAlign: "center" }}>API status: {status}</Text>
       {error ? <Text style={{ color: "red", textAlign: "center" }}>{error}</Text> : null}
       {!apiUrl ? <Text style={{ color: "orange", marginTop: 8, textAlign: "center" }}>Tip: set EXPO_PUBLIC_API_URL in app.json</Text> : null}
-      <Text style={{ marginTop: 12, opacity: 0.7 }}>{apiUrl || "(no API URL set)"}</Text>
+      <Text style={{ marginTop: 12, opacity: 0.7, textAlign: "center" }}>{apiUrl || "(no API URL set)"}</Text>
+
+      <View style={{ flex: 1, marginTop: 12 }}>
+        <MapScreen />
+      </View>
     </SafeAreaView>
   );
 }
