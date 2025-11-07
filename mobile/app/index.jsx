@@ -15,13 +15,19 @@ export default function Home() {
       <View style={styles.card}>
               <Link href="camera">camera</Link>
       </View>
-            <View style={styles.card}>
+
+      <View style={styles.card}>
             <Link href="maps" style={styles.Link}>maps</Link>
       </View>
-            <View style={styles.card}>
+
+            
+      <View style={styles.card}>
             <Link href="photogal" style={styles.Link}>photogal</Link>
       </View>
 
+      <View style={styles.card}>
+            <Link href="login" style={styles.Link}>login</Link>
+      </View>
 
       <Link href="about" style={styles.Link}>About Page</Link>
       <Link href="contact" style={styles.Link}>Contact Page</Link>
