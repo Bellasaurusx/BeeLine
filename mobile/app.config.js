@@ -1,9 +1,8 @@
-import 'dotenv/config';
-
-export default ({ config }) => ({
-    ...config,
-    extra: {
-        ...config.extra,
-        EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
-    },
-});
+try { require('dotenv').config(); } catch (e) {}
+export default {
+  expo: {
+    name: "BeeLine",
+    slug: "BeeLine",
+    extra: { API_URL: process.env.EXPO_PUBLIC_API_URL },
+  },
+};
