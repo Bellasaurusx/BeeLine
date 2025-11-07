@@ -13,11 +13,19 @@ export default function Home() {
       <Text style={{ marginTop: 10, marginBottom: 30 }}>A Bee App</Text>
 
       <View style={styles.card}>
-              <Link href="camera">Camera</Link>
+              <Link href="camera">camera</Link>
       </View>
+            <View style={styles.card}>
+            <Link href="maps" style={styles.Link}>maps</Link>
+      </View>
+            <View style={styles.card}>
+            <Link href="photogal" style={styles.Link}>photogal</Link>
+      </View>
+
 
       <Link href="about" style={styles.Link}>About Page</Link>
       <Link href="contact" style={styles.Link}>Contact Page</Link>
+
     </View>
 
   );
