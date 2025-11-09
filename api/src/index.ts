@@ -54,6 +54,20 @@ app.get("/api/identifications", async (_req, res) => {
   res.json(rows);
 });
 
+app.get("/api/observations", async (_req, res) => {
+  try {
+    const observations = await prisma.observation.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 500,
+    });
+    res.json(observations);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch observations" });
+  }
+});
+
+
 const PORT = Number(process.env.PORT) || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
