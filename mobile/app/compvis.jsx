@@ -1,4 +1,4 @@
-
+// app/identify.jsx
 import React, { useState } from "react";
 import {
   View,
@@ -12,14 +12,16 @@ import {
   Linking,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link } from "expo-router";
 
 const PLANTNET_API_KEY = "2b10BuvkFTkWr8yTFdYCsSQC";
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
+const GALLERY_KEY = "@plant_gallery_uris";
 
 const toPercent = (p) => `${Math.round((p || 0) * 100)}%`;
 
-// for api stuff
+// --- API helpers shared by both camera + upload flows ---
 async function identifyWithPlantNet(imageAsset) {
   const form = new FormData();
   form.append("images", {
@@ -81,12 +83,24 @@ async function enrichWithINat(scientificName) {
   };
 }
 
+// 👉 helper to append a URI to gallery in AsyncStorage
+async function addToGallery(uri) {
+  try {
+    const existing = await AsyncStorage.getItem(GALLERY_KEY);
+    const arr = existing ? JSON.parse(existing) : [];
+    const updated = [uri, ...arr]; // newest first
+    await AsyncStorage.setItem(GALLERY_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn("Failed to save to gallery", e);
+  }
+}
+
 export default function IdentifyScreen() {
   const [imageAsset, setImageAsset] = useState(null);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
 
-  //upload for gal
+  // 📁 Upload from gallery (does NOT auto-add to gallery, just for id)
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
@@ -114,7 +128,7 @@ export default function IdentifyScreen() {
     setResults([]);
   };
 
-  // 📷 Take a photo with camera
+  // 📷 Take a photo with camera (this IS added to gallery)
   const handleCameraCapture = async () => {
     try {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -140,6 +154,9 @@ export default function IdentifyScreen() {
         return;
       }
 
+      // 💾 save this camera photo into gallery
+      await addToGallery(asset.uri);
+
       setImageAsset(asset);
       setResults([]);
     } catch (err) {
@@ -148,7 +165,7 @@ export default function IdentifyScreen() {
     }
   };
 
-  // for cam and upload
+  // 🔍 Run identification (shared for upload + camera)
   const identify = async () => {
     if (!imageAsset?.uri) {
       Alert.alert("No image", "Choose or take a photo first.");
@@ -223,7 +240,7 @@ export default function IdentifyScreen() {
         onPress={identify}
         disabled={!imageAsset || loading}
       >
-        <Text style={styles.btnText}>
+        <Text style={styles.btnIdentifyText}>
           {loading ? "Identifying…" : "Identify Plant"}
         </Text>
       </TouchableOpacity>
@@ -309,9 +326,15 @@ export default function IdentifyScreen() {
         }
       />
 
-      <Link href="/" style={styles.backLink}>
-        <Text style={styles.backLinkText}>⬅ Back Home</Text>
-      </Link>
+      {/* Links */}
+      <View style={styles.footerLinks}>
+        <Link href="/photogal" style={styles.footerLinkText}>
+          📸 View Photo Gallery
+        </Link>
+        <Link href="/" style={styles.footerLinkText}>
+          ⬅ Back Home
+        </Link>
+      </View>
     </View>
   );
 }
@@ -344,6 +367,7 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.5 },
   btnText: { fontWeight: "700", color: "#000" },
+  btnIdentifyText: { fontWeight: "700", color: "#fff" },
   preview: { width: "100%", height: 220, borderRadius: 12, marginBottom: 12 },
   subtle: { color: "#666", marginVertical: 8 },
   loadingRow: { flexDirection: "row", alignItems: "center", marginVertical: 8 },
@@ -383,11 +407,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   cardBtnOutlineText: { color: "#111", fontWeight: "700" },
-  backLink: {
+  footerLinks: {
     marginTop: 16,
-    alignSelf: "center",
+    alignItems: "center",
+    gap: 6,
   },
-  backLinkText: {
+  footerLinkText: {
     borderBottomWidth: 1,
     borderColor: "#000",
     paddingBottom: 2,
