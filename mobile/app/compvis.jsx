@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   View,
@@ -18,10 +19,9 @@ const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
 
 const toPercent = (p) => `${Math.round((p || 0) * 100)}%`;
 
-
+// for api stuff
 async function identifyWithPlantNet(imageAsset) {
   const form = new FormData();
-
   form.append("images", {
     uri: imageAsset.uri,
     name: "photo.jpg",
@@ -57,7 +57,6 @@ async function identifyWithPlantNet(imageAsset) {
   return suggestions.slice(0, 5);
 }
 
-
 async function enrichWithINat(scientificName) {
   const url = `https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(
     scientificName
@@ -82,15 +81,42 @@ async function enrichWithINat(scientificName) {
   };
 }
 
-export default function CompVisCameraScreen() {
+export default function IdentifyScreen() {
   const [imageAsset, setImageAsset] = useState(null);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
 
-  // open cams
+  //upload for gal
+  const pickImage = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(
+        "Permission needed",
+        "I need access to your photos to identify a plant."
+      );
+      return;
+    }
+
+    const res = await ImagePicker.launchImageLibraryAsync({
+      quality: 0.7,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    });
+
+    if (res.canceled) return;
+
+    const asset = res.assets?.[0];
+    if (!asset?.uri) {
+      Alert.alert("Oops", "Couldn't read image.");
+      return;
+    }
+
+    setImageAsset(asset);
+    setResults([]);
+  };
+
+  // 📷 Take a photo with camera
   const handleCameraCapture = async () => {
     try {
-      // 1) Ask camera permish
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
         Alert.alert(
@@ -100,7 +126,6 @@ export default function CompVisCameraScreen() {
         return;
       }
 
-      
       const res = await ImagePicker.launchCameraAsync({
         quality: 0.7,
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -116,19 +141,32 @@ export default function CompVisCameraScreen() {
       }
 
       setImageAsset(asset);
+      setResults([]);
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", err.message || "Camera failed.");
+    }
+  };
+
+  // for cam and upload
+  const identify = async () => {
+    if (!imageAsset?.uri) {
+      Alert.alert("No image", "Choose or take a photo first.");
+      return;
+    }
+
+    try {
       setLoading(true);
       setResults([]);
 
-      
-      const guesses = await identifyWithPlantNet(asset);
+      const guesses = await identifyWithPlantNet(imageAsset);
 
-      
       const enriched = [];
       for (const g of guesses) {
         try {
           const extra = await enrichWithINat(g.scientificName);
           enriched.push({ ...g, ...extra });
-        } catch (e) {
+        } catch {
           enriched.push({ ...g, taxon: null });
         }
       }
@@ -155,36 +193,63 @@ export default function CompVisCameraScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.h1}>Camera test</Text>
-      <Text style={styles.subtle}>
-        check plant
-      </Text>
+      <Text style={styles.h1}>Identify a Plant</Text>
 
+      {/* Top row: upload + camera buttons */}
+      <View style={styles.row}>
+        <TouchableOpacity
+          style={[styles.btn, loading && styles.btnDisabled]}
+          onPress={pickImage}
+          disabled={loading}
+        >
+          <Text style={styles.btnText}>Upload Photo</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.btn, loading && styles.btnDisabled]}
+          onPress={handleCameraCapture}
+          disabled={loading}
+        >
+          <Text style={styles.btnText}>Use Camera</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Identify button */}
       <TouchableOpacity
-        style={[styles.btn, loading && styles.btnDisabled]}
-        onPress={handleCameraCapture}
-        disabled={loading}
+        style={[
+          styles.btnIdentify,
+          (!imageAsset || loading) && styles.btnDisabled,
+        ]}
+        onPress={identify}
+        disabled={!imageAsset || loading}
       >
         <Text style={styles.btnText}>
-          {loading ? "call api" : "Camera Pop-up"}
+          {loading ? "Identifying…" : "Identify Plant"}
         </Text>
       </TouchableOpacity>
 
-      {imageAsset?.uri && (
+      {/* Preview */}
+      {imageAsset?.uri ? (
         <Image
           source={{ uri: imageAsset.uri }}
           style={styles.preview}
           resizeMode="cover"
         />
+      ) : (
+        <Text style={styles.subtle}>
+          Upload or take a photo to get started.
+        </Text>
       )}
 
+      {/* Loading state */}
       {loading && (
         <View style={styles.loadingRow}>
           <ActivityIndicator />
-          <Text style={{ marginLeft: 8 }}>calling api.</Text>
+          <Text style={{ marginLeft: 8 }}>Talking to the plant gods…</Text>
         </View>
       )}
 
+      {/* Results list */}
       <FlatList
         data={results}
         keyExtractor={(item, idx) => `${item.scientificName}-${idx}`}
@@ -236,13 +301,11 @@ export default function CompVisCameraScreen() {
           );
         }}
         ListEmptyComponent={
-          !loading && imageAsset
-            ? (
-              <Text style={styles.subtle}>
-                No results yet — try snapping again.
-              </Text>
-            )
-            : null
+          !loading && imageAsset ? (
+            <Text style={styles.subtle}>
+              No results yet. Tap “Identify Plant”.
+            </Text>
+          ) : null
         }
       />
 
@@ -255,30 +318,35 @@ export default function CompVisCameraScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 16 },
-  h1: { fontSize: 22, fontWeight: "700", marginTop: 8, marginBottom: 6 },
-  subtle: { color: "#666", marginBottom: 14 },
-  btn: {
-    backgroundColor: "#f0c93d",
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    alignItems: "center",
+  h1: { fontSize: 22, fontWeight: "700", marginTop: 8, marginBottom: 12 },
+  row: {
+    flexDirection: "row",
+    gap: 12,
     marginBottom: 12,
   },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { fontWeight: "700", fontSize: 16 },
-  preview: {
-    width: "100%",
-    height: 220,
-    borderRadius: 12,
-    marginBottom: 10,
-    marginTop: 4,
-  },
-  loadingRow: {
-    flexDirection: "row",
+  btn: {
+    flex: 1,
+    backgroundColor: "#f0c93d",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     alignItems: "center",
-    marginVertical: 8,
+    justifyContent: "center",
   },
+  btnIdentify: {
+    backgroundColor: "#111",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  btnDisabled: { opacity: 0.5 },
+  btnText: { fontWeight: "700", color: "#000" },
+  preview: { width: "100%", height: 220, borderRadius: 12, marginBottom: 12 },
+  subtle: { color: "#666", marginVertical: 8 },
+  loadingRow: { flexDirection: "row", alignItems: "center", marginVertical: 8 },
   card: {
     flexDirection: "row",
     gap: 12,
@@ -294,18 +362,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#f5f5f5",
   },
-  thumbPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  thumbPlaceholder: { alignItems: "center", justifyContent: "center" },
   thumbText: { fontSize: 10, color: "#999" },
   commonName: { fontSize: 16, fontWeight: "700" },
-  sciName: {
-    fontSize: 13,
-    fontStyle: "italic",
-    color: "#333",
-    marginTop: 2,
-  },
+  sciName: { fontSize: 13, fontStyle: "italic", color: "#333", marginTop: 2 },
   confidence: { fontSize: 12, color: "#555", marginTop: 4 },
   cardBtns: { flexDirection: "row", gap: 8, marginTop: 8 },
   cardBtn: {
