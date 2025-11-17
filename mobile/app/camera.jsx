@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,10 +11,12 @@ import {
   Linking,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import { Link } from "expo-router";
+import Constants from "expo-constants";
 
 
-const PLANTNET_API_KEY = "you api key";
+const PLANTNET_API_KEY = Constants.expoConfig.extra.PLANTNET_API_KEY;
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
 
 
@@ -91,6 +93,30 @@ export default function IdentifyScreen() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
 
+  const [coords, setCoords] = useState(null);      
+  const [savingId, setSavingId] = useState(null);  
+  const [saveError, setSaveError] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } =
+          await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          console.log("Location permission not granted");
+          return;
+        }
+        const loc = await Location.getCurrentPositionAsync({});
+        setCoords({
+          lat: loc.coords.latitude,
+          lng: loc.coords.longitude,
+        });
+      } catch (err) {
+        console.log("Location error:", err);
+      }
+    })();
+  }, []);
+
   // for images
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -148,6 +174,70 @@ export default function IdentifyScreen() {
       Alert.alert("Error", err.message || "Identification failed.");
     } finally {
       setLoading(false);
+    }
+  };
+
+    const confirmPin = (item) => {
+    if (!coords) {
+      Alert.alert(
+        "Location not ready",
+        "We couldn't get your location yet. Try again."
+      );
+      return;
+    }
+
+    Alert.alert(
+      "Pin this plant?",
+      "This will save the plant to your BeeLine map.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Pin it", onPress: () => saveIdentification(item) },
+      ]
+    );
+  };
+
+  const saveIdentification = async (item) => {
+    if (!coords) return;
+
+    try {
+      setSavingId(item.scientificName);
+      setSaveError(null);
+
+      const payload = {
+        commonName: item?.taxon?.commonName || null,
+        scientificName: item.scientificName,
+        imageUrl: item?.taxon?.photo || null,
+        lat: coords.lat,
+        lng: coords.lng,
+      };
+
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/observations`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data?.error || "Failed to save pin");
+
+      if (data.duplicate) {
+        Alert.alert(
+          "Already pinned",
+          "A pin for this plant already exists near here."
+        );
+      } else {
+        Alert.alert("Pinned!", "Saved to your BeeLine map.");
+      }
+    } catch (err) {
+      console.error("saveIdentification error", err);
+      setSaveError(err.message || "Failed to save");
+      Alert.alert("Error", "Couldn't save the pin.");
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -228,7 +318,8 @@ export default function IdentifyScreen() {
                   Confidence: {toPercent(item.score)}
                 </Text>
 
-                <View style={styles.cardBtns}>
+                  <View style={styles.cardBtns}>
+                  {/* Select */}
                   <TouchableOpacity
                     style={styles.cardBtn}
                     onPress={() => selectResult(item)}
@@ -236,6 +327,23 @@ export default function IdentifyScreen() {
                     <Text style={styles.cardBtnText}>Select</Text>
                   </TouchableOpacity>
 
+                  {/* Pin to Map */}
+                  <TouchableOpacity
+                    style={[
+                      styles.cardBtn,
+                      savingId === item.scientificName && styles.btnDisabled,
+                    ]}
+                    disabled={savingId === item.scientificName}
+                    onPress={() => confirmPin(item)}
+                  >
+                    {savingId === item.scientificName ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.cardBtnText}>Pin to Map</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Wikipedia */}
                   {wiki ? (
                     <TouchableOpacity
                       style={styles.cardBtnOutline}
