@@ -34,5 +34,6 @@ model Observation {
   commonName     String?
   scientificName String?
   imageUrl       String?
+  confidence     Float?   // 0–1 from PlantNet
   createdAt      DateTime @default(now())
 }

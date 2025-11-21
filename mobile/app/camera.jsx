@@ -59,34 +59,51 @@ async function identifyWithPlantNet(imageAsset) {
       score: r?.score ?? 0,
     })) || [];
 
-  return suggestions.slice(0, 5);
-}
+    // Sort by score, highest first 
+  suggestions.sort((a, b) => b.score - a.score);
 
-
-async function enrichWithINat(scientificName) {
-  const url = `https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(
-    scientificName
-  )}&rank=species`;
-  const r = await fetch(url);
-  const j = await r.json();
-
-  const taxon = j?.results?.[0];
-  if (!taxon) return { taxon: null };
+  // Mark low-confidence sets
+  const top = suggestions[0];
+  const lowConfidence = !top || top.score < 0.3; 
 
   return {
-    taxon: {
-      id: taxon.id,
-      scientificName: taxon.name,
-      commonName: taxon.preferred_common_name || null,
-      photo:
-        taxon.default_photo?.medium_url ||
-        taxon.default_photo?.square_url ||
-        null,
-      wiki: taxon.wikipedia_url || null,
-    },
+    lowConfidence,
+    suggestions: suggestions.slice(0, 5),
   };
 }
 
+
+
+async function enrichWithINat(scientificName) {
+  try {
+    const url = `https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(
+      scientificName
+    )}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const taxon = json?.results?.[0];
+
+    if (!taxon) return { taxon: null };
+
+    const commonName =
+      taxon.preferred_common_name ||
+      taxon.english_common_name ||
+      (taxon.common_names?.length ? taxon.common_names[0].name : null);
+
+    const photo =
+      taxon?.default_photo?.medium_url ||
+      taxon?.default_photo?.square_url ||
+      null;
+
+    return {
+      taxon,
+      commonName,
+      photo,
+    };
+  } catch {
+    return { taxon: null };
+  }
+}
 
 export default function IdentifyScreen() {
   const [imageAsset, setImageAsset] = useState(null);
@@ -147,35 +164,42 @@ export default function IdentifyScreen() {
 
   // identify and enrich
   const identify = async () => {
-    if (!imageAsset?.uri) {
-      Alert.alert("No image", "Choose a photo first.");
-      return;
-    }
+  if (!imageAsset?.uri) {
+    Alert.alert("No image", "Choose a photo first.");
+    return;
+  }
 
-    try {
-      setLoading(true);
-      setResults([]);
+  try {
+    setLoading(true);
+    setResults([]);
 
-      const guesses = await identifyWithPlantNet(imageAsset);
+    const { lowConfidence, suggestions } = await identifyWithPlantNet(imageAsset);
 
-      const enriched = [];
-      for (const g of guesses) {
-        try {
-          const e = await enrichWithINat(g.scientificName);
-          enriched.push({ ...g, ...e });
-        } catch {
-          enriched.push({ ...g, taxon: null });
-        }
+    const enriched = [];
+    for (const g of suggestions) {
+      try {
+        const e = await enrichWithINat(g.scientificName);
+        enriched.push({ ...g, ...e });
+      } catch {
+        enriched.push({ ...g, taxon: null });
       }
-
-      setResults(enriched);
-    } catch (err) {
-      console.error(err);
-      Alert.alert("Error", err.message || "Identification failed.");
-    } finally {
-      setLoading(false);
     }
-  };
+
+    if (lowConfidence) {
+      Alert.alert(
+        "Low Confidence",
+        "We’re not very confident about this match. Try another photo or angle."
+      );
+    }
+
+    setResults(enriched);
+  } catch (err) {
+    console.error(err);
+    Alert.alert("Error", err.message || "Identification failed.");
+  } finally {
+    setLoading(false);
+  }
+};
 
     const confirmPin = (item) => {
     if (!coords) {
@@ -203,13 +227,32 @@ export default function IdentifyScreen() {
       setSavingId(item.scientificName);
       setSaveError(null);
 
-      const payload = {
-        commonName: item?.taxon?.commonName || null,
-        scientificName: item.scientificName,
-        imageUrl: item?.taxon?.photo || null,
-        lat: coords.lat,
-        lng: coords.lng,
-      };
+      if (item.score < 0.3) {
+  Alert.alert(
+    "Low confidence",
+    "This match is pretty uncertain. Try another photo or angle before pinning."
+  );
+  return;
+}
+
+          const payload = {
+      commonName:
+        item.commonName ||                                  
+        item?.taxon?.preferred_common_name ||               
+        item?.taxon?.english_common_name ||                 
+        item?.taxon?.commonName ||                          
+        null,
+
+      scientificName: item.scientificName,
+
+      confidence:
+        typeof item.score === "number" ? item.score : null,
+
+      imageUrl: item.photo || item?.taxon?.photo || null,
+
+      lat: coords.lat,
+      lng: coords.lng,
+    };
 
       const res = await fetch(
         `${process.env.EXPO_PUBLIC_API_URL}/api/observations`,
@@ -295,8 +338,14 @@ export default function IdentifyScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
         renderItem={({ item }) => {
           const img = item?.taxon?.photo;
-          const common = item?.taxon?.commonName;
-          const sci = item?.scientificName;
+          const common =
+            item.commonName ||
+            item?.taxon?.preferred_common_name ||
+            item?.taxon?.english_common_name ||
+            item?.taxon?.commonName ||
+            "Unknown common name";
+
+          const sci = item.scientificName;
           const wiki = item?.taxon?.wiki;
 
           return (

@@ -62,6 +62,7 @@ app.post("/api/observations", async (req, res) => {
       imageUrl,
       lat,
       lng,
+      confidence,
     } = req.body ?? {};
 
     if (
@@ -96,6 +97,8 @@ app.post("/api/observations", async (req, res) => {
         commonName: commonName || null,
         scientificName,
         imageUrl: imageUrl || null,
+        confidence:
+          typeof confidence === "number" ? confidence : null,
       },
     });
 

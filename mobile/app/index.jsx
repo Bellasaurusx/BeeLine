@@ -16,6 +16,10 @@ export default function Home() {
               <Link href="camera">Camera</Link>
       </View>
 
+      <View style={styles.card}>
+        <Link href="collection">My Collection</Link>
+      </View>
+
       <Link href="about" style={styles.Link}>About Page</Link>
       <Link href="contact" style={styles.Link}>Contact Page</Link>
     </View>
