@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 
 const PLANTNET_API_KEY = "2b10BuvkFTkWr8yTFdYCsSQC";
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
@@ -21,7 +21,7 @@ const GALLERY_KEY = "@plant_gallery_uris";
 
 const toPercent = (p) => `${Math.round((p || 0) * 100)}%`;
 
-// --- API helpers shared by both camera + upload flows ---
+
 async function identifyWithPlantNet(imageAsset) {
   const form = new FormData();
   form.append("images", {
@@ -99,6 +99,7 @@ export default function IdentifyScreen() {
   const [imageAsset, setImageAsset] = useState(null);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
+  const router = useRouter();
 
   // 📁 Upload from gallery (does NOT auto-add to gallery, just for id)
   const pickImage = async () => {
@@ -215,32 +216,32 @@ export default function IdentifyScreen() {
       {/* Top row: upload + camera buttons */}
       <View style={styles.row}>
         <TouchableOpacity
-          style={[styles.btn, loading && styles.btnDisabled]}
+          style={[styles.yellowBtn, loading && styles.btnDisabled]}
           onPress={pickImage}
           disabled={loading}
         >
-          <Text style={styles.btnText}>Upload Photo</Text>
+          <Text style={styles.yellowBtnText}>Upload Photo</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.btn, loading && styles.btnDisabled]}
+          style={[styles.yellowBtn, loading && styles.btnDisabled]}
           onPress={handleCameraCapture}
           disabled={loading}
         >
-          <Text style={styles.btnText}>Use Camera</Text>
+          <Text style={styles.yellowBtnText}>Use Camera</Text>
         </TouchableOpacity>
       </View>
 
       {/* Identify button */}
       <TouchableOpacity
         style={[
-          styles.btnIdentify,
+          styles.identifyBtn,
           (!imageAsset || loading) && styles.btnDisabled,
         ]}
         onPress={identify}
         disabled={!imageAsset || loading}
       >
-        <Text style={styles.btnIdentifyText}>
+        <Text style={styles.identifyText}>
           {loading ? "Identifying…" : "Identify Plant"}
         </Text>
       </TouchableOpacity>
@@ -261,8 +262,8 @@ export default function IdentifyScreen() {
       {/* Loading state */}
       {loading && (
         <View style={styles.loadingRow}>
-          <ActivityIndicator />
-          <Text style={{ marginLeft: 8 }}>Talking to the plant gods…</Text>
+          <ActivityIndicator color="#f4cf65" />
+          <Text style={styles.loadingText}>Talking to the plant gods…</Text>
         </View>
       )}
 
@@ -270,7 +271,7 @@ export default function IdentifyScreen() {
       <FlatList
         data={results}
         keyExtractor={(item, idx) => `${item.scientificName}-${idx}`}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         renderItem={({ item }) => {
           const img = item?.taxon?.photo;
           const common = item?.taxon?.commonName;
@@ -326,96 +327,190 @@ export default function IdentifyScreen() {
         }
       />
 
-      {/* Links */}
-      <View style={styles.footerLinks}>
-        <Link href="/photogal" style={styles.footerLinkText}>
-          📸 View Photo Gallery
-        </Link>
-        <Link href="/" style={styles.footerLinkText}>
-          ⬅ Back Home
+      {/* Footer link to gallery */}
+      <View style={styles.footer}>
+        <Link href="/photogal" style={styles.footerLink}>
+          <Text style={styles.footerLinkText}>📸 View Photo Gallery</Text>
         </Link>
       </View>
+
+      {/* BeeLine back button */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.push("/home")}
+      >
+        <Text style={styles.backArrow}>←</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 16 },
-  h1: { fontSize: 22, fontWeight: "700", marginTop: 8, marginBottom: 12 },
+  container: {
+    flex: 1,
+    backgroundColor: "#4c6233", // BeeLine green
+    paddingHorizontal: 18,
+    paddingTop: 50,
+  },
+  h1: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 16,
+  },
+  subtle: {
+    color: "#fff",
+    opacity: 0.8,
+    marginVertical: 8,
+  },
   row: {
     flexDirection: "row",
     gap: 12,
     marginBottom: 12,
   },
-  btn: {
+
+  /* Buttons */
+  yellowBtn: {
     flex: 1,
-    backgroundColor: "#f0c93d",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    backgroundColor: "#f4cf65",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
   },
-  btnIdentify: {
-    backgroundColor: "#111",
+  yellowBtnText: {
+    fontWeight: "600",
+    color: "#333",
+  },
+  identifyBtn: {
+    backgroundColor: "#f4cf65",
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
   },
-  btnDisabled: { opacity: 0.5 },
-  btnText: { fontWeight: "700", color: "#000" },
-  btnIdentifyText: { fontWeight: "700", color: "#fff" },
-  preview: { width: "100%", height: 220, borderRadius: 12, marginBottom: 12 },
-  subtle: { color: "#666", marginVertical: 8 },
-  loadingRow: { flexDirection: "row", alignItems: "center", marginVertical: 8 },
+  identifyText: {
+    fontWeight: "700",
+    color: "#333",
+  },
+  btnDisabled: {
+    opacity: 0.5,
+  },
+
+  preview: {
+    width: "100%",
+    height: 220,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  loadingText: {
+    marginLeft: 8,
+    color: "#fff",
+  },
+
+  /* Results cards */
   card: {
     flexDirection: "row",
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "#eee",
+    gap: 10,
     borderRadius: 12,
-    padding: 12,
+    padding: 10,
     marginBottom: 10,
+    backgroundColor: "#f6f2da", // light card on green
   },
   thumb: {
     width: 72,
     height: 72,
     borderRadius: 12,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#eee",
   },
-  thumbPlaceholder: { alignItems: "center", justifyContent: "center" },
-  thumbText: { fontSize: 10, color: "#999" },
-  commonName: { fontSize: 16, fontWeight: "700" },
-  sciName: { fontSize: 13, fontStyle: "italic", color: "#333", marginTop: 2 },
-  confidence: { fontSize: 12, color: "#555", marginTop: 4 },
-  cardBtns: { flexDirection: "row", gap: 8, marginTop: 8 },
+  thumbPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbText: {
+    fontSize: 10,
+    color: "#777",
+  },
+  commonName: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#222",
+  },
+  sciName: {
+    fontSize: 13,
+    fontStyle: "italic",
+    color: "#444",
+    marginTop: 2,
+  },
+  confidence: {
+    fontSize: 12,
+    color: "#555",
+    marginTop: 4,
+  },
+  cardBtns: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+  },
   cardBtn: {
-    backgroundColor: "#111",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    backgroundColor: "#4c6233",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 8,
   },
-  cardBtnText: { color: "#fff", fontWeight: "700" },
+  cardBtnText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
   cardBtnOutline: {
     borderWidth: 1,
-    borderColor: "#111",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    borderColor: "#4c6233",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 8,
   },
-  cardBtnOutlineText: { color: "#111", fontWeight: "700" },
-  footerLinks: {
-    marginTop: 16,
-    alignItems: "center",
-    gap: 6,
+  cardBtnOutlineText: {
+    color: "#4c6233",
+    fontWeight: "600",
   },
+
+  footer: {
+    marginTop: 10,
+    alignItems: "center",
+  },
+  footerLink: {},
   footerLinkText: {
-    borderBottomWidth: 1,
-    borderColor: "#000",
-    paddingBottom: 2,
-    fontSize: 14,
+    color: "#f4cf65",
+    fontWeight: "500",
+  },
+
+  /* BeeLine back button */
+  backButton: {
+    position: "absolute",
+    bottom: 30,
+    right: 25,
+    backgroundColor: "#f4cf65",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  backArrow: {
+    fontSize: 24,
+    color: "#333",
   },
 });

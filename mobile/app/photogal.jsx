@@ -1,4 +1,3 @@
-// app/photogal.jsx
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -9,12 +8,13 @@ import {
   TouchableOpacity,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Link } from "expo-router";
+import { useRouter } from "expo-router";
 
 const GALLERY_KEY = "@plant_gallery_uris";
 
 export default function PhotoGalleryScreen() {
   const [photos, setPhotos] = useState([]);
+  const router = useRouter();
 
   const loadGallery = async () => {
     try {
@@ -43,16 +43,16 @@ export default function PhotoGalleryScreen() {
     <View style={styles.container}>
       <Text style={styles.h1}>Photo Gallery</Text>
       <Text style={styles.subtle}>
-        Photos taken with the camera on the Identify screen.
+        Photos taken with the identification camera.
       </Text>
 
       <View style={styles.topRow}>
-        <TouchableOpacity style={styles.refreshBtn} onPress={loadGallery}>
-          <Text style={styles.refreshText}>🔄 Refresh</Text>
+        <TouchableOpacity style={styles.yellowBtn} onPress={loadGallery}>
+          <Text style={styles.yellowBtnText}>Refresh</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.clearBtn} onPress={clearGallery}>
-          <Text style={styles.clearText}>🗑 Clear</Text>
+        <TouchableOpacity style={styles.yellowBtn} onPress={clearGallery}>
+          <Text style={styles.yellowBtnText}>Clear</Text>
         </TouchableOpacity>
       </View>
 
@@ -66,7 +66,7 @@ export default function PhotoGalleryScreen() {
           keyExtractor={(uri, idx) => uri + idx}
           numColumns={3}
           columnWrapperStyle={styles.row}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: 80 }}
           renderItem={({ item }) => (
             <View style={styles.thumbWrapper}>
               <Image source={{ uri: item }} style={styles.thumb} />
@@ -75,74 +75,96 @@ export default function PhotoGalleryScreen() {
         />
       )}
 
-      <View style={styles.footer}>
-        <Link href="/identify" style={styles.footerLink}>
-          <Text style={styles.footerLinkText}>⬅ Back to Identify</Text>
-        </Link>
-        <Link href="/" style={styles.footerLink}>
-          <Text style={styles.footerLinkText}>🏠 Home</Text>
-        </Link>
-      </View>
+      {/* Back Button (BeeLine style) */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.push("/home")}
+      >
+        <Text style={styles.backArrow}>←</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 16 },
-  h1: { fontSize: 22, fontWeight: "700", marginTop: 8, marginBottom: 4 },
-  subtle: { color: "#666", marginBottom: 12 },
+  container: {
+    flex: 1,
+    backgroundColor: "#4c6233", // BeeLine green
+    padding: 20,
+    paddingTop: 50,
+  },
+  h1: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 6,
+  },
+  subtle: {
+    color: "#fff",
+    opacity: 0.8,
+    marginBottom: 20,
+  },
+
+  /* Buttons */
+  yellowBtn: {
+    backgroundColor: "#f4cf65",
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 25,
+  },
+  yellowBtnText: {
+    fontWeight: "600",
+    color: "#333",
+  },
+
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 20,
   },
-  refreshBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#111",
-  },
-  refreshText: { fontWeight: "600" },
-  clearBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: "#fce4e4",
-    borderWidth: 1,
-    borderColor: "#d33",
-  },
-  clearText: { fontWeight: "600", color: "#a00" },
+
   emptyText: {
     marginTop: 20,
     textAlign: "center",
-    color: "#777",
+    color: "#fff",
+    opacity: 0.8,
   },
+
   row: {
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 10,
   },
   thumbWrapper: {
     flex: 1 / 3,
     aspectRatio: 1,
-    padding: 2,
+    padding: 3,
   },
   thumb: {
     width: "100%",
     height: "100%",
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: "#eee",
   },
-  footer: {
-    marginTop: 16,
+
+  /* Back Button */
+  backButton: {
+    position: "absolute",
+    bottom: 30,
+    right: 30,
+    backgroundColor: "#f4cf65",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  footerLink: {},
-  footerLinkText: {
-    borderBottomWidth: 1,
-    borderColor: "#000",
-    paddingBottom: 2,
-    fontSize: 14,
+  backArrow: {
+    fontSize: 24,
+    color: "#333",
   },
 });
