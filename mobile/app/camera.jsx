@@ -66,6 +66,15 @@ async function identifyWithPlantNet(imageAsset) {
   const top = suggestions[0];
   const lowConfidence = !top || top.score < 0.3; 
 
+    console.log(
+    "🌿 PlantNet suggestions:",
+    suggestions.map((s) => ({
+      scientificName: s.scientificName,
+      commonNames: s.commonNames,
+      score: s.score,
+    }))
+  );
+
   return {
     lowConfidence,
     suggestions: suggestions.slice(0, 5),
@@ -73,37 +82,74 @@ async function identifyWithPlantNet(imageAsset) {
 }
 
 
-
 async function enrichWithINat(scientificName) {
   try {
-    const url = `https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(
-      scientificName
-    )}`;
+    console.log("🔍 enrichWithINat called with (raw):", scientificName);
+
+    const cleaned = scientificName
+      .replace(/\s+[A-Z][a-z]*\.?$/g, "") 
+      .split(" ")
+      .slice(0, 2)
+      .join(" ");
+
+    console.log("🔧 Cleaned name for iNat:", cleaned);
+
+    const url = `https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(cleaned)}&per_page=5`;
     const res = await fetch(url);
     const json = await res.json();
-    const taxon = json?.results?.[0];
 
-    if (!taxon) return { taxon: null };
+    const results = json?.results || [];
 
+    console.log(
+      "🪲 iNat results (first 5):",
+      results.slice(0, 5).map((t) => ({
+        id: t.id,
+        name: t.name,
+        preferred_common_name: t.preferred_common_name,
+        english_common_name: t.english_common_name,
+      }))
+    );
+
+    // --- Pick best match ---
+    let taxon =
+      results.find((t) => t.name?.toLowerCase() === cleaned.toLowerCase()) ||
+      results[0];
+
+    if (!taxon) {
+      console.log("⚠️ No matching taxon found for:", cleaned);
+      return { taxon: null };
+    }
+
+    // --- Extract common name ---
     const commonName =
       taxon.preferred_common_name ||
       taxon.english_common_name ||
       (taxon.common_names?.length ? taxon.common_names[0].name : null);
 
+    // --- Extract photo ---
     const photo =
       taxon?.default_photo?.medium_url ||
       taxon?.default_photo?.square_url ||
       null;
+
+    console.log("✅ Chosen iNat taxon:", {
+      scientific: taxon.name,
+      commonName,
+      id: taxon.id,
+    });
 
     return {
       taxon,
       commonName,
       photo,
     };
-  } catch {
+  } catch (err) {
+    console.log("❌ iNat enrich error:", err);
     return { taxon: null };
   }
 }
+
+
 
 export default function IdentifyScreen() {
   const [imageAsset, setImageAsset] = useState(null);
