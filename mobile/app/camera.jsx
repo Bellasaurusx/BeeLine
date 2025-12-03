@@ -50,14 +50,17 @@ async function identifyWithPlantNet(imageAsset) {
 
 
   const suggestions =
-    json?.results?.map((r) => ({
-      scientificName:
-        r?.species?.scientificName ||
-        r?.species?.scientificNameWithoutAuthor ||
-        r?.gbif?.scientificName ||
-        "who knows",
-      score: r?.score ?? 0,
-    })) || [];
+  json?.results?.map((r) => ({
+    scientificName:
+      r?.species?.scientificName ||
+      r?.species?.scientificNameWithoutAuthor ||
+      r?.gbif?.scientificName ||
+      "Unknown plant",
+    commonNames: Array.isArray(r?.species?.commonNames)
+      ? r.species.commonNames
+      : [],
+    score: r?.score ?? 0,
+  })) || [];
 
     // Sort by score, highest first 
   suggestions.sort((a, b) => b.score - a.score);
@@ -132,6 +135,9 @@ async function enrichWithINat(scientificName) {
       taxon?.default_photo?.square_url ||
       null;
 
+    // --- Extract Wikipedia link ---
+    const wiki = taxon.wikipedia_url || null;
+
     console.log("✅ Chosen iNat taxon:", {
       scientific: taxon.name,
       commonName,
@@ -142,6 +148,7 @@ async function enrichWithINat(scientificName) {
       taxon,
       commonName,
       photo,
+      wiki,
     };
   } catch (err) {
     console.log("❌ iNat enrich error:", err);
@@ -281,15 +288,17 @@ export default function IdentifyScreen() {
   return;
 }
 
-          const payload = {
-      commonName:
-        item.commonName ||                                  
-        item?.taxon?.preferred_common_name ||               
-        item?.taxon?.english_common_name ||                 
-        item?.taxon?.commonName ||                          
-        null,
+  const payload = {
+    commonName:
+      item.commonName ||
+      item?.taxon?.preferred_common_name ||
+      item?.taxon?.english_common_name ||
+      item?.taxon?.commonName ||
+      (Array.isArray(item.commonNames) && item.commonNames.length
+        ? item.commonNames[0]
+        : null),
+    scientificName: item.scientificName,
 
-      scientificName: item.scientificName,
 
       confidence:
         typeof item.score === "number" ? item.score : null,
@@ -331,9 +340,16 @@ export default function IdentifyScreen() {
   };
 
   const selectResult = (item) => {
-    const name = item?.taxon?.commonName
-      ? `${item.taxon.commonName} (${item.scientificName})`
+    const displayCommon =
+      item.commonName ||
+      item?.taxon?.preferred_common_name ||
+      item?.taxon?.english_common_name ||
+      item?.taxon?.commonName;
+
+    const name = displayCommon
+      ? `${displayCommon} (${item.scientificName})`
       : item.scientificName;
+
     Alert.alert("Selected", `You selected: ${name}`);
   };
 
@@ -383,7 +399,12 @@ export default function IdentifyScreen() {
         keyExtractor={(item, idx) => `${item.scientificName}-${idx}`}
         contentContainerStyle={{ paddingBottom: 40 }}
         renderItem={({ item }) => {
-          const img = item?.taxon?.photo;
+          const img =
+            item.photo ||
+            item?.taxon?.default_photo?.medium_url ||
+            item?.taxon?.default_photo?.square_url ||
+            null;
+
           const common =
             item.commonName ||
             item?.taxon?.preferred_common_name ||
@@ -392,7 +413,8 @@ export default function IdentifyScreen() {
             "Unknown common name";
 
           const sci = item.scientificName;
-          const wiki = item?.taxon?.wiki;
+          const wiki = item.wiki || item?.taxon?.wikipedia_url || null;
+
 
           return (
             <View style={styles.card}>
