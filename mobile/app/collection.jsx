@@ -9,7 +9,6 @@ import {
   TextInput,
   Image,
 } from "react-native";
-import { Link } from "expo-router";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -18,8 +17,9 @@ export default function CollectionScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("newest"); 
+  const [sortBy, setSortBy] = useState("newest");
   const [onlyWithPhotos, setOnlyWithPhotos] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => {
     async function run() {
@@ -82,6 +82,44 @@ export default function CollectionScreen() {
     return result;
   }, [items, search, sortBy, onlyWithPhotos]);
 
+  if (selectedItem) {
+    const item = selectedItem;
+    const title = item.commonName || item.scientificName || "Unknown plant";
+    const sci = item.scientificName;
+    const date = item.createdAt
+      ? new Date(item.createdAt).toLocaleString()
+      : "";
+    const confidence =
+      typeof item.confidence === "number"
+        ? `${Math.round(item.confidence * 100)}%`
+        : null;
+
+    return (
+      <View style={styles.container}>
+        <TouchableOpacity onPress={() => setSelectedItem(null)}>
+          <Text style={styles.backLink}>← Back to collection</Text>
+        </TouchableOpacity>
+
+        {item.imageUrl ? (
+          <Image source={{ uri: item.imageUrl }} style={styles.detailImage} />
+        ) : (
+          <View style={[styles.detailImage, styles.cardImagePlaceholder]}>
+            <Text style={styles.cardImagePlaceholderText}>No image</Text>
+          </View>
+        )}
+
+        <Text style={styles.detailTitle}>{title}</Text>
+        {!!sci && <Text style={styles.detailSubtitle}>{sci}</Text>}
+        {!!confidence && (
+          <Text style={styles.meta}>
+            Identification confidence: {confidence}
+          </Text>
+        )}
+        {!!date && <Text style={styles.meta}>Pinned on {date}</Text>}
+      </View>
+    );
+  }
+
   const renderItem = ({ item }) => {
     const title = item.commonName || item.scientificName || "Unknown plant";
     const subtitle =
@@ -95,7 +133,10 @@ export default function CollectionScreen() {
         : null;
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => setSelectedItem(item)}
+      >
         {item.imageUrl ? (
           <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
         ) : (
@@ -114,7 +155,7 @@ export default function CollectionScreen() {
             )}
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -201,10 +242,6 @@ export default function CollectionScreen() {
           }
         />
       )}
-
-      <Link href="/" style={styles.backLink}>
-        Back Home
-      </Link>
     </View>
   );
 }
@@ -315,8 +352,27 @@ const styles = StyleSheet.create({
   cardMeta: { color: "#888", fontSize: 12 },
   backLink: {
     marginTop: 12,
-    alignSelf: "center",
+    alignSelf: "flex-start",
     borderBottomWidth: 1,
     paddingBottom: 2,
+  },
+  detailImage: {
+    width: "100%",
+    height: 220,
+    borderRadius: 16,
+    marginTop: 12,
+    marginBottom: 16,
+    backgroundColor: "#eee",
+  },
+  detailTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  detailSubtitle: {
+    fontSize: 16,
+    fontStyle: "italic",
+    color: "#555",
+    marginBottom: 8,
   },
 });
