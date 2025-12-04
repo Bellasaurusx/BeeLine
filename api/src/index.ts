@@ -75,7 +75,7 @@ app.post("/api/observations", async (req, res) => {
         .json({ error: "lat, lng, and scientificName are required" });
     }
 
-    const R = 0.0005; 
+    const R = 0.0005;
     const existing = await prisma.observation.findFirst({
       where: {
         scientificName,
@@ -90,6 +90,7 @@ app.post("/api/observations", async (req, res) => {
         observation: existing,
       });
     }
+
     const observation = await prisma.observation.create({
       data: {
         lat,
