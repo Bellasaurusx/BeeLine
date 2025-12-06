@@ -26,3 +26,14 @@ model Identification {
 
   @@index([identifiedAt])
 }
+
+model Observation {
+  id             Int      @id @default(autoincrement())
+  lat            Float
+  lng            Float
+  commonName     String?
+  scientificName String?
+  imageUrl       String?
+  confidence     Float?   // 0–1 from PlantNet
+  createdAt      DateTime @default(now())
+}

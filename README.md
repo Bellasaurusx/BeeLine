@@ -4,28 +4,28 @@ BeeLine is a mobile-first app that helps users identify plants, map pollinator h
 ## Introduction
 BeeLine encourges ecological awareness through plant identification and pollinator habitat tracking. Users can take photos of plants, learn about their role in local ecosystems, and map what they discover in their area.
 
-## Alpha Features (Current Development Goals)
+## Alpha Features (Completed)
 - Save plant identification results to a personal collection
 - View saved plants pinned on a map (Leaflet + OpenStreetMap)
 - Filter plants by region, category, or date
 - Edit or delete saved entries
 - Sustainability/ecological tips displayed alongside plant info
-- Light/Dark mode theme
 
-### MVP (Planned First Milestone)
+### MVP (Completed First Milestone)
 - Capture or upload a plant image
-- Identify plant using the iNaturlist API
+- Identify plant using the PlantNet API
 - Display species details
 - User account creation and login/logout
 - Map view with user location
 - Basic saved collection display
-
-## Beta (Planned Next)
-- Share collections publicly
 - Community map overlays
+
+## Beta (Current Develpoment Goals)
+- Share collections publicly
 - Notifications about local events
 - Onboarding walkthrough
 - Local plant activity/stats dahsboard 
+- Smart Layer improvements (better naming, accuracy, and context)
 
 ## Technologies
 | Layer | Technology |
@@ -33,7 +33,7 @@ BeeLine encourges ecological awareness through plant identification and pollinat
 | Mobile App | React Native (Expo) |
 | Backend API | Node.js + Express |
 | Database | PostgreSQL (hosted on Render) |
-| Plant Identification | iNaturalist API |
+| Plant Identification | PlantNet API |
 | Maps | Leaflet.js + OpenStreetMap |
 | UI/Design Tools | Figma, Illustrator, Canva |
 
@@ -89,12 +89,12 @@ Requires the Expo Go app.
 MIT License
 
 ## Project Status
-Stage: Early Alpha, MVP development is just beginning. 
+Stage: Beta development has begun. 
 
 ## Roadmap
 | Phase | Focus |
 |------|-------|
 | MVP | Identification, saving to collection, basic map |
 | Alpha | Collection filters, sustainability tips, map polish |
-| Beta | Sharing, community overlays, notifications |
+| **Beta** | Sharing, community overlays, notifications, onboarding, stats |
 | v2.0 | Achievements. device sync, educational content |

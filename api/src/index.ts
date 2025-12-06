@@ -54,6 +54,102 @@ app.get("/api/identifications", async (_req, res) => {
   res.json(rows);
 });
 
+app.post("/api/observations", async (req, res) => {
+  try {
+    const {
+      commonName,
+      scientificName,
+      imageUrl,
+      lat,
+      lng,
+      confidence,
+    } = req.body ?? {};
+
+    if (
+      typeof lat !== "number" ||
+      typeof lng !== "number" ||
+      !scientificName
+    ) {
+      return res
+        .status(400)
+        .json({ error: "lat, lng, and scientificName are required" });
+    }
+
+    const R = 0.0005; 
+    const existing = await prisma.observation.findFirst({
+      where: {
+        scientificName,
+        lat: { gte: lat - R, lte: lat + R },
+        lng: { gte: lng - R, lte: lng + R },
+      },
+    });
+
+    if (existing) {
+      return res.status(200).json({
+        duplicate: true,
+        observation: existing,
+      });
+    }
+    const observation = await prisma.observation.create({
+      data: {
+        lat,
+        lng,
+        commonName: commonName || null,
+        scientificName,
+        imageUrl: imageUrl || null,
+        confidence:
+          typeof confidence === "number" ? confidence : null,
+      },
+    });
+
+    let plant = await prisma.plant.findFirst({
+      where: { scientific: scientificName },
+    });
+
+    if (!plant) {
+      plant = await prisma.plant.create({
+        data: {
+          common: commonName || scientificName,
+          scientific: scientificName,
+        },
+      });
+    }
+
+    const identification = await prisma.identification.create({
+      data: {
+        plantId: plant.id,
+        latitude: lat,
+        longitude: lng,
+      },
+    });
+
+    return res.status(201).json({
+      duplicate: false,
+      observation,
+      identification,
+    });
+  } catch (err: any) {
+    console.error("POST /api/observations error", err);
+    return res
+      .status(500)
+      .json({ error: "Failed to save observation/identification" });
+  }
+});
+
+app.get("/api/observations", async (_req, res) => {
+  try {
+    const observations = await prisma.observation.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 500,
+    });
+    res.json(observations);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch observations" });
+  }
+});
+
+
 const PORT = Number(process.env.PORT) || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
