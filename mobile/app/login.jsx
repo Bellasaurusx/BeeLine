@@ -33,7 +33,7 @@ export default function Login() {
         placeholderTextColor="#333"
       />
 
-      {/* WORKING Login Button */}
+      {/* Working */}
       <TouchableOpacity
         style={styles.loginBtn}
         onPress={() => router.push("/home")} // ← WORKS!
@@ -41,10 +41,14 @@ export default function Login() {
         <Text style={styles.loginText}>Log in</Text>
       </TouchableOpacity>
 
-      {/* Create Account (not functional) */}
-      <TouchableOpacity style={styles.createBtn}>
+      {/* Working */}
+      <TouchableOpacity
+        style={styles.createBtn}
+        onPress={() => router.push("/signup")}
+      >
         <Text style={styles.createText}>Create account</Text>
       </TouchableOpacity>
+
     </View>
   );
 }

@@ -1,9 +1,12 @@
 import React from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { Link, useRouter } from "expo-router";
-
-import Img1 from "../assets/flower1.jpg";   // replace with real assets
-import Img2 from "../assets/flower2.jpg";   // replace with real assets
+import MapIcon from "../assets/mapicon.png";
+import CamIcon from "../assets/cameraicon.png";
+import GalleryIcon from "../assets/galleryicon.png";
+import HomeIcon from "../assets/homeicon.png";
+import Img1 from "../assets/flower1.jpg";
+import Img2 from "../assets/flower2.jpg";
 
 export default function Home() {
   const router = useRouter();
@@ -49,31 +52,31 @@ export default function Home() {
           style={styles.iconBtn}
           onPress={() => router.push("/maps")}
         >
-          <Text style={styles.icon}>Map</Text>
+          <Image source={MapIcon} style={styles.iconImg} />
         </TouchableOpacity>
-
 
         <TouchableOpacity
           style={styles.iconBtn}
           onPress={() => router.push("/compvis")}
         >
-          <Text style={styles.icon}>Cam</Text>
+          <Image source={CamIcon} style={styles.iconImg} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.iconBtn}
           onPress={() => router.push("/photogal")}
         >
-          <Text style={styles.icon}>Gal</Text>
+          <Image source={GalleryIcon} style={styles.iconImg} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.iconBtn}
           onPress={() => router.push("/home")}
         >
-          <Text style={styles.icon}>home</Text>
+          <Image source={HomeIcon} style={styles.iconImg} />
         </TouchableOpacity>
       </View>
+
 
       {/* Back Button */}
       <TouchableOpacity
@@ -92,6 +95,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#4c6233", // BeeLine green
     paddingTop: 40,
     paddingHorizontal: 20,
+  },
+
+  iconBtn: {
+    backgroundColor: "#5C4033",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  iconImg: {
+    width: 28,
+    height: 28,
+    resizeMode: "contain",
   },
 
   /* HEADER */
@@ -152,11 +170,11 @@ const styles = StyleSheet.create({
   sidebar: {
     position: "absolute",
     right: 20,
-    top: 180,
+    bottom: 100,
     gap: 16,
   },
   iconBtn: {
-    backgroundColor: "#f4cf65",
+    backgroundColor: "#F4EBD0",
     width: 50,
     height: 50,
     borderRadius: 25,
