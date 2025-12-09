@@ -1,64 +1,91 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
-import Logo from '../assets/Logo.png';
-import { Link } from 'expo-router'
+// app/index.jsx
+import React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ImageBackground,
+  TouchableOpacity,
+} from "react-native";
+import { useRouter } from "expo-router";
 
-export default function Home() {
+import Bkg from "../assets/bkg.png";
+
+export default function Splash() {
+  const router = useRouter();
+
   return (
-    <View style={styles.container}>
-      <Image source={Logo} style={styles.img} />
+    <ImageBackground source={Bkg} style={styles.bg} resizeMode="cover">
+      {/* Title + tagline (moved lower now) */}
+      <View style={styles.centerContent}>
+        <Text style={styles.title}>Beeline</Text>
 
-      <Text style={[styles.title, {color: 'red'}]}>BeeLine</Text>
-
-      <Text style={{ marginTop: 10, marginBottom: 30 }}>A Bee App</Text>
-
-      <View style={styles.card}>
-              <Link href="camera">Camera</Link>
+        <Text style={styles.tagline}>
+          We foster ecological awareness and empower individuals to take
+          actionable steps toward pollinator conservation.
+        </Text>
       </View>
 
-      <View style={styles.card}>
-        <Link href="collection">My Collection</Link>
-      </View>
-
-      <Link href="about" style={styles.Link}>About Page</Link>
-      <Link href="contact" style={styles.Link}>Contact Page</Link>
-    </View>
-
+      {/* Bigger button at bottom */}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => router.push("/login")}
+      >
+        <Text style={styles.buttonText}>Get Started</Text>
+      </TouchableOpacity>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1, // fills full space
-    backgroundColor: '#fff',
-    alignItems: 'center', // center horizontally
-    justifyContent: 'center', // center vertically
-  },
-  title: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 24,
-  },
-  card: {
-    backgroundColor: '#eee',
-    padding: 20,
-    borderRadius: 8,
-    //shadow styling in React Native:
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3, // adds shadow on Android
-  },
-  img: {
-    marginVertical: 20,
-    width: 120, // add a width and hieght
-    height: 120,
-    resizeMode: 'contain',
+  bg: {
+    flex: 1,
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingBottom: 70,
+    paddingTop: 40,
   },
 
-      Link:{
-        marginVertical: 10,
-        borderBottomWidth: 1,
-    }
+  /* moved DOWN more (towards the vertical center) */
+  centerContent: {
+    marginTop: "99%", 
+    paddingHorizontal: 30,
+    alignItems: "center",
+  },
+
+  title: {
+    fontSize: 52,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 10,
+  },
+
+  tagline: {
+    fontSize: 18,
+    color: "#fff",
+    textAlign: "center",
+    lineHeight: 24,
+    maxWidth: 320,
+    fontWeight: "400",
+  },
+
+
+  button: {
+    backgroundColor: "#f4b400",
+    paddingVertical: 18,
+    paddingHorizontal: 60,
+    borderRadius: 40,
+    marginBottom: 40,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+
+  buttonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 20,
+  },
 });

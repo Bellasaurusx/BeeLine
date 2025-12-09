@@ -9,7 +9,7 @@ import {
   Alert,
   StyleSheet,
   Linking,
-} from "react-native";
+} from "react-native"; 
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { Link } from "expo-router";
