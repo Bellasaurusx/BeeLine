@@ -9,6 +9,9 @@ import {
   TextInput,
   Image,
 } from "react-native";
+import BeeIcon from "../assets/bee_icon.png";
+
+
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -146,7 +149,17 @@ export default function CollectionScreen() {
         )}
 
         <View style={styles.cardContent}>
-          <Text style={styles.cardTitle}>{title}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.cardTitle}>{title}</Text>
+
+            {item.pollinatorFriendly && (
+              <Image
+                source={BeeIcon}
+                style={styles.beeIcon}
+                resizeMode="contain"
+              />
+            )}
+          </View>
           {!!subtitle && <Text style={styles.cardSubtitle}>{subtitle}</Text>}
           <View style={styles.metaRow}>
             {!!date && <Text style={styles.cardMeta}>{date}</Text>}
@@ -374,5 +387,16 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     color: "#555",
     marginBottom: 8,
+  },
+  titleRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  },
+
+  beeIcon: {
+    width: 20,
+    height: 20,
+    marginLeft: 6,
   },
 });
