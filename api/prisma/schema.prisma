@@ -11,6 +11,8 @@ model Plant {
   id              String           @id @default(cuid())
   common          String
   scientific      String
+  pollinatorFriendly Boolean?     
+  pollinatorNotes   String?
   createdAt       DateTime         @default(now())
   identifications Identification[]
 }
@@ -34,6 +36,7 @@ model Observation {
   commonName     String?
   scientificName String?
   imageUrl       String?
-  confidence     Float?   // 0–1 from PlantNet
+  confidence     Float?   
+  pollinatorFriendly Boolean?
   createdAt      DateTime @default(now())
 }

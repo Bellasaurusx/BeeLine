@@ -4,6 +4,16 @@ dotenv.config();
 import express from "express";
 import cors from "cors";
 import { prisma } from "./db";
+import { POLLINATOR_SPECIES } from "./PollinatorSpecies";
+
+function normalizeScientificName(name: string): string {
+  if (!name) return name;
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return `${parts[0]} ${parts[1]}`;
+  }
+  return name.trim();
+}
 
 const app = express();
 app.use(cors());
@@ -75,6 +85,15 @@ app.post("/api/observations", async (req, res) => {
         .json({ error: "lat, lng, and scientificName are required" });
     }
 
+    const rawSci = scientificName.trim();
+    const simpleSci = normalizeScientificName(rawSci);
+
+    const speciesInfo =
+      POLLINATOR_SPECIES[rawSci] || POLLINATOR_SPECIES[simpleSci];
+
+    const isPollinator = speciesInfo?.friendly ?? null;
+    const pollinatorNotes = speciesInfo?.notes ?? null;
+
     const R = 0.0005;
     const existing = await prisma.observation.findFirst({
       where: {
@@ -100,6 +119,7 @@ app.post("/api/observations", async (req, res) => {
         imageUrl: imageUrl || null,
         confidence:
           typeof confidence === "number" ? confidence : null,
+        pollinatorFriendly: isPollinator,
       },
     });
 
@@ -112,6 +132,16 @@ app.post("/api/observations", async (req, res) => {
         data: {
           common: commonName || scientificName,
           scientific: scientificName,
+          pollinatorFriendly: isPollinator,
+          pollinatorNotes,
+        },
+      });
+    } else if (plant.pollinatorFriendly === null) {
+      plant = await prisma.plant.update({
+        where: { id: plant.id },
+        data: {
+          pollinatorFriendly: isPollinator,
+          pollinatorNotes,
         },
       });
     }
