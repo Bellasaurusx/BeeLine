@@ -57,14 +57,14 @@ export default function Home() {
 
         <TouchableOpacity
           style={styles.iconBtn}
-          onPress={() => router.push("/compvis")}
+          onPress={() => router.push("/camera")}
         >
           <Image source={CamIcon} style={styles.iconImg} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.iconBtn}
-          onPress={() => router.push("/photogal")}
+          onPress={() => router.push("/collection")}
         >
           <Image source={GalleryIcon} style={styles.iconImg} />
         </TouchableOpacity>

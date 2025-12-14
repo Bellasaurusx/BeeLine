@@ -16,7 +16,7 @@ import { Link } from "expo-router";
 import Constants from "expo-constants";
 
 
-const PLANTNET_API_KEY = Constants.expoConfig.extra.PLANTNET_API_KEY;
+const PLANTNET_API_KEY = process.env.EXPO_PUBLIC_PLANTNET_API_KEY;
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
 
 

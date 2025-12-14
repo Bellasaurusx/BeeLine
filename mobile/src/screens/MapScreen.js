@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, StyleSheet, Platform } from "react-native";
-import { WebView } from "react-native-webview";
+import  WebView  from "react-native-webview";
 import * as Location from "expo-location";
 
 export default function MapScreen() {
