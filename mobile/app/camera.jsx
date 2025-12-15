@@ -9,22 +9,18 @@ import {
   Alert,
   StyleSheet,
   Linking,
-} from "react-native"; 
+} from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
-import { Link } from "expo-router";
-import Constants from "expo-constants";
-
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import BackButton from "./components/BackButton";
 
 const PLANTNET_API_KEY = process.env.EXPO_PUBLIC_PLANTNET_API_KEY;
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
 
-
 const toPercent = (p) => `${Math.round((p || 0) * 100)}%`;
 
-
 async function identifyWithPlantNet(imageAsset) {
-
   const form = new FormData();
   form.append("images", {
     uri: imageAsset.uri,
@@ -48,28 +44,25 @@ async function identifyWithPlantNet(imageAsset) {
 
   const json = await res.json();
 
-
   const suggestions =
-  json?.results?.map((r) => ({
-    scientificName:
-      r?.species?.scientificName ||
-      r?.species?.scientificNameWithoutAuthor ||
-      r?.gbif?.scientificName ||
-      "Unknown plant",
-    commonNames: Array.isArray(r?.species?.commonNames)
-      ? r.species.commonNames
-      : [],
-    score: r?.score ?? 0,
-  })) || [];
+    json?.results?.map((r) => ({
+      scientificName:
+        r?.species?.scientificName ||
+        r?.species?.scientificNameWithoutAuthor ||
+        r?.gbif?.scientificName ||
+        "Unknown plant",
+      commonNames: Array.isArray(r?.species?.commonNames)
+        ? r.species.commonNames
+        : [],
+      score: r?.score ?? 0,
+    })) || [];
 
-    // Sort by score, highest first 
   suggestions.sort((a, b) => b.score - a.score);
 
-  // Mark low-confidence sets
   const top = suggestions[0];
-  const lowConfidence = !top || top.score < 0.3; 
+  const lowConfidence = !top || top.score < 0.3;
 
-    console.log(
+  console.log(
     "🌿 PlantNet suggestions:",
     suggestions.map((s) => ({
       scientificName: s.scientificName,
@@ -84,20 +77,21 @@ async function identifyWithPlantNet(imageAsset) {
   };
 }
 
-
 async function enrichWithINat(scientificName) {
   try {
     console.log("🔍 enrichWithINat called with (raw):", scientificName);
 
     const cleaned = scientificName
-      .replace(/\s+[A-Z][a-z]*\.?$/g, "") 
+      .replace(/\s+[A-Z][a-z]*\.?$/g, "")
       .split(" ")
       .slice(0, 2)
       .join(" ");
 
     console.log("🔧 Cleaned name for iNat:", cleaned);
 
-    const url = `https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(cleaned)}&per_page=5`;
+    const url = `https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(
+      cleaned
+    )}&per_page=5`;
     const res = await fetch(url);
     const json = await res.json();
 
@@ -113,7 +107,6 @@ async function enrichWithINat(scientificName) {
       }))
     );
 
-    // --- Pick best match ---
     let taxon =
       results.find((t) => t.name?.toLowerCase() === cleaned.toLowerCase()) ||
       results[0];
@@ -123,19 +116,16 @@ async function enrichWithINat(scientificName) {
       return { taxon: null };
     }
 
-    // --- Extract common name ---
     const commonName =
       taxon.preferred_common_name ||
       taxon.english_common_name ||
       (taxon.common_names?.length ? taxon.common_names[0].name : null);
 
-    // --- Extract photo ---
     const photo =
       taxon?.default_photo?.medium_url ||
       taxon?.default_photo?.square_url ||
       null;
 
-    // --- Extract Wikipedia link ---
     const wiki = taxon.wikipedia_url || null;
 
     console.log("✅ Chosen iNat taxon:", {
@@ -156,22 +146,21 @@ async function enrichWithINat(scientificName) {
   }
 }
 
-
-
 export default function IdentifyScreen() {
+  const insets = useSafeAreaInsets();
+
   const [imageAsset, setImageAsset] = useState(null);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
 
-  const [coords, setCoords] = useState(null);      
-  const [savingId, setSavingId] = useState(null);  
+  const [coords, setCoords] = useState(null);
+  const [savingId, setSavingId] = useState(null);
   const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const { status } =
-          await Location.requestForegroundPermissionsAsync();
+        const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
           console.log("Location permission not granted");
           return;
@@ -187,7 +176,6 @@ export default function IdentifyScreen() {
     })();
   }, []);
 
-  // for images
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
@@ -215,46 +203,47 @@ export default function IdentifyScreen() {
     setResults([]);
   };
 
-  // identify and enrich
   const identify = async () => {
-  if (!imageAsset?.uri) {
-    Alert.alert("No image", "Choose a photo first.");
-    return;
-  }
-
-  try {
-    setLoading(true);
-    setResults([]);
-
-    const { lowConfidence, suggestions } = await identifyWithPlantNet(imageAsset);
-
-    const enriched = [];
-    for (const g of suggestions) {
-      try {
-        const e = await enrichWithINat(g.scientificName);
-        enriched.push({ ...g, ...e });
-      } catch {
-        enriched.push({ ...g, taxon: null });
-      }
+    if (!imageAsset?.uri) {
+      Alert.alert("No image", "Choose a photo first.");
+      return;
     }
 
-    if (lowConfidence) {
-      Alert.alert(
-        "Low Confidence",
-        "We’re not very confident about this match. Try another photo or angle."
+    try {
+      setLoading(true);
+      setResults([]);
+
+      const { lowConfidence, suggestions } = await identifyWithPlantNet(
+        imageAsset
       );
+
+      const enriched = [];
+      for (const g of suggestions) {
+        try {
+          const e = await enrichWithINat(g.scientificName);
+          enriched.push({ ...g, ...e });
+        } catch {
+          enriched.push({ ...g, taxon: null });
+        }
+      }
+
+      if (lowConfidence) {
+        Alert.alert(
+          "Low Confidence",
+          "We’re not very confident about this match. Try another photo or angle."
+        );
+      }
+
+      setResults(enriched);
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", err.message || "Identification failed.");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setResults(enriched);
-  } catch (err) {
-    console.error(err);
-    Alert.alert("Error", err.message || "Identification failed.");
-  } finally {
-    setLoading(false);
-  }
-};
-
-    const confirmPin = (item) => {
+  const confirmPin = (item) => {
     if (!coords) {
       Alert.alert(
         "Location not ready",
@@ -263,14 +252,10 @@ export default function IdentifyScreen() {
       return;
     }
 
-    Alert.alert(
-      "Pin this plant?",
-      "This will save the plant to your BeeLine map.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Pin it", onPress: () => saveIdentification(item) },
-      ]
-    );
+    Alert.alert("Pin this plant?", "This will save the plant to your BeeLine map.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Pin it", onPress: () => saveIdentification(item) },
+    ]);
   };
 
   const saveIdentification = async (item) => {
@@ -281,33 +266,28 @@ export default function IdentifyScreen() {
       setSaveError(null);
 
       if (item.score < 0.3) {
-  Alert.alert(
-    "Low confidence",
-    "This match is pretty uncertain. Try another photo or angle before pinning."
-  );
-  return;
-}
+        Alert.alert(
+          "Low confidence",
+          "This match is pretty uncertain. Try another photo or angle before pinning."
+        );
+        return;
+      }
 
-  const payload = {
-    commonName:
-      item.commonName ||
-      item?.taxon?.preferred_common_name ||
-      item?.taxon?.english_common_name ||
-      item?.taxon?.commonName ||
-      (Array.isArray(item.commonNames) && item.commonNames.length
-        ? item.commonNames[0]
-        : null),
-    scientificName: item.scientificName,
-
-
-      confidence:
-        typeof item.score === "number" ? item.score : null,
-
-      imageUrl: item.photo || item?.taxon?.photo || null,
-
-      lat: coords.lat,
-      lng: coords.lng,
-    };
+      const payload = {
+        commonName:
+          item.commonName ||
+          item?.taxon?.preferred_common_name ||
+          item?.taxon?.english_common_name ||
+          item?.taxon?.commonName ||
+          (Array.isArray(item.commonNames) && item.commonNames.length
+            ? item.commonNames[0]
+            : null),
+        scientificName: item.scientificName,
+        confidence: typeof item.score === "number" ? item.score : null,
+        imageUrl: item.photo || item?.taxon?.photo || null,
+        lat: coords.lat,
+        lng: coords.lng,
+      };
 
       const res = await fetch(
         `${process.env.EXPO_PUBLIC_API_URL}/api/observations`,
@@ -319,14 +299,10 @@ export default function IdentifyScreen() {
       );
 
       const data = await res.json();
-
       if (!res.ok) throw new Error(data?.error || "Failed to save pin");
 
       if (data.duplicate) {
-        Alert.alert(
-          "Already pinned",
-          "A pin for this plant already exists near here."
-        );
+        Alert.alert("Already pinned", "A pin for this plant already exists near here.");
       } else {
         Alert.alert("Pinned!", "Saved to your BeeLine map.");
       }
@@ -358,7 +334,7 @@ export default function IdentifyScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <Text style={styles.h1}>Identify a Plant</Text>
 
       <View style={styles.row}>
@@ -371,9 +347,7 @@ export default function IdentifyScreen() {
           onPress={identify}
           disabled={!imageAsset || loading}
         >
-          <Text style={styles.btnText}>
-            {loading ? "Identifying…" : "Identify"}
-          </Text>
+          <Text style={styles.btnText}>{loading ? "Identifying…" : "Identify"}</Text>
         </TouchableOpacity>
       </View>
 
@@ -397,7 +371,7 @@ export default function IdentifyScreen() {
       <FlatList
         data={results}
         keyExtractor={(item, idx) => `${item.scientificName}-${idx}`}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 120 }} 
         renderItem={({ item }) => {
           const img =
             item.photo ||
@@ -415,7 +389,6 @@ export default function IdentifyScreen() {
           const sci = item.scientificName;
           const wiki = item.wiki || item?.taxon?.wikipedia_url || null;
 
-
           return (
             <View style={styles.card}>
               {img ? (
@@ -427,16 +400,13 @@ export default function IdentifyScreen() {
               )}
 
               <View style={{ flex: 1 }}>
-                <Text style={styles.commonName}>
-                  {common ? common : "Unknown common name"}
-                </Text>
+                <Text style={styles.commonName}>{common}</Text>
                 <Text style={styles.sciName}>{sci}</Text>
                 <Text style={styles.confidence}>
                   Confidence: {toPercent(item.score)}
                 </Text>
 
-                  <View style={styles.cardBtns}>
-                  {/* Select */}
+                <View style={styles.cardBtns}>
                   <TouchableOpacity
                     style={styles.cardBtn}
                     onPress={() => selectResult(item)}
@@ -444,7 +414,6 @@ export default function IdentifyScreen() {
                     <Text style={styles.cardBtnText}>Select</Text>
                   </TouchableOpacity>
 
-                  {/* Pin to Map */}
                   <TouchableOpacity
                     style={[
                       styles.cardBtn,
@@ -460,7 +429,6 @@ export default function IdentifyScreen() {
                     )}
                   </TouchableOpacity>
 
-                  {/* Wikipedia */}
                   {wiki ? (
                     <TouchableOpacity
                       style={styles.cardBtnOutline}
@@ -481,13 +449,10 @@ export default function IdentifyScreen() {
         }
       />
 
-      <Link href="/" style={styles.Link}>
-        Back Home
-      </Link>
+      <BackButton />
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 16 },
@@ -513,13 +478,18 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 10,
   },
-  thumb: { width: 72, height: 72, borderRadius: 12, backgroundColor: "#f5f5f5" },
+  thumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    backgroundColor: "#f5f5f5",
+  },
   thumbPlaceholder: { alignItems: "center", justifyContent: "center" },
   thumbText: { fontSize: 10, color: "#999" },
   commonName: { fontSize: 16, fontWeight: "700" },
   sciName: { fontSize: 13, fontStyle: "italic", color: "#333", marginTop: 2 },
   confidence: { fontSize: 12, color: "#555", marginTop: 4 },
-  cardBtns: { flexDirection: "row", gap: 8, marginTop: 8 },
+  cardBtns: { flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" },
   cardBtn: {
     backgroundColor: "#111",
     paddingVertical: 8,
@@ -535,9 +505,4 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   cardBtnOutlineText: { color: "#111", fontWeight: "700" },
-  Link: {
-    marginVertical: 10,
-    borderBottomWidth: 1,
-    alignSelf: "center",
-  },
 });

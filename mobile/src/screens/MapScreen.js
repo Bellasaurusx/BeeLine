@@ -1,9 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, StyleSheet, Platform } from "react-native";
-import  WebView  from "react-native-webview";
+import WebView from "react-native-webview";
 import * as Location from "expo-location";
+import BackButton from "../../app/components/BackButton";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function MapScreen() {
+  const insets = useSafeAreaInsets();
+
   const webRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [pins, setPins] = useState([]);
@@ -52,23 +56,46 @@ export default function MapScreen() {
 
   const onWebViewLoad = () => setReady(true);
 
-  const leafletHTML = (initial) => `<!DOCTYPE html>
+  const topOffset = Math.round((insets.top || 0) + 12);
+
+  const leafletHTML = (initial, offsetTopPx) => `<!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
+      :root { --safeTop: ${offsetTopPx}px; }
+
       html,body,#map{height:100%;margin:0}
-      .leaflet-control-layers{box-shadow:0 2px 8px rgba(0,0,0,.15);border-radius:8px}
+
+      .leaflet-top {
+        top: var(--safeTop) !important;
+      }
+
+      .leaflet-control-layers{
+        box-shadow:0 2px 8px rgba(0,0,0,.15);
+        border-radius:8px;
+      }
+
       .recenter-btn{
         position:absolute;
         z-index:1000;
         right:12px;
-        top:12px;
+        top: calc(var(--safeTop) + 10px);
         background:#fff;
-        border-radius:6px;
-        padding:8px 10px;
-        box-shadow:0 2px 6px rgba(0,0,0,.2)
+        border-radius:10px;
+        padding:10px 12px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        font-size:14px;
+        box-shadow:0 2px 6px rgba(0,0,0,.2);
+        user-select:none;
+      }
+
+      .leaflet-control-zoom a {
+        width: 36px;
+        height: 36px;
+        line-height: 36px;
+        font-size: 18px;
       }
     </style>
   </head>
@@ -103,7 +130,6 @@ export default function MapScreen() {
         "Toner Lite": toner
       };
 
-      // One layer for future "My Pins", one for community overlay
       const pinLayer = L.layerGroup().addTo(map);
       const communityLayer = L.layerGroup().addTo(map);
 
@@ -118,7 +144,6 @@ export default function MapScreen() {
         )
         .addTo(map);
 
-      // Called from React Native: window._setPins([...])
       window._setPins = function (pins) {
         try {
           const data = Array.isArray(pins) ? pins : [];
@@ -218,7 +243,7 @@ export default function MapScreen() {
         javaScriptEnabled
         domStorageEnabled
         onLoadEnd={onWebViewLoad}
-        source={{ html: leafletHTML(coords) }}
+        source={{ html: leafletHTML(coords, topOffset) }}
         onMessage={(e) => {
           try {
             const m = JSON.parse(e.nativeEvent.data);
@@ -231,6 +256,17 @@ export default function MapScreen() {
           } catch {}
         }}
       />
+
+      <View
+        style={{
+          position: "absolute",
+          bottom: 70,  
+          left: 28,     
+        }}
+      >
+        <BackButton />
+      </View>
+
     </View>
   );
 }
