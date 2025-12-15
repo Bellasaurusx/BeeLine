@@ -14,6 +14,8 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, useRouter } from "expo-router";
+import { useLeftHand } from "./LeftHandContext";
+
 
 const PLANTNET_API_KEY = "2b10BuvkFTkWr8yTFdYCsSQC";
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
@@ -83,7 +85,7 @@ async function enrichWithINat(scientificName) {
   };
 }
 
-// 👉 helper to append a URI to gallery in AsyncStorage
+//  helper to append a URI to gallery in AsyncStorage
 async function addToGallery(uri) {
   try {
     const existing = await AsyncStorage.getItem(GALLERY_KEY);
@@ -100,8 +102,10 @@ export default function IdentifyScreen() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const router = useRouter();
+  const { leftHandMode } = useLeftHand();
+  
 
-  // 📁 Upload from gallery (does NOT auto-add to gallery, just for id)
+
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
@@ -336,9 +340,12 @@ export default function IdentifyScreen() {
 
       {/* BeeLine back button */}
       <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => router.push("/home")}
-      >
+          style={[
+            styles.backButton,
+            leftHandMode ? styles.leftButton : styles.rightButton,
+          ]}
+          onPress={() => router.push("/home")}
+        >
         <Text style={styles.backArrow}>←</Text>
       </TouchableOpacity>
     </View>
@@ -496,7 +503,6 @@ const styles = StyleSheet.create({
   backButton: {
     position: "absolute",
     bottom: 30,
-    right: 25,
     backgroundColor: "#f4cf65",
     width: 56,
     height: 56,
@@ -509,6 +515,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+    leftButton: {
+    left: 25,
+  },
+  rightButton: {
+    right: 25,
+  },
+
   backArrow: {
     fontSize: 24,
     color: "#333",

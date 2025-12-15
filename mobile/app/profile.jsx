@@ -7,12 +7,12 @@ import {
   StyleSheet,
 } from "react-native";
 import { useRouter } from "expo-router";
-
-// 👇 change this to whatever your profile image file is
 import ProfilePic from "../assets/profile.jpg";
+import { useLeftHand } from "./LeftHandContext";
 
 export default function Profile() {
   const router = useRouter();
+  const { leftHandMode, toggleLeftHandMode } = useLeftHand();
 
   return (
     <View style={styles.container}>
@@ -26,7 +26,14 @@ export default function Profile() {
 
       {/* Options List */}
       <View style={styles.options}>
-        <Option label="Left hand mode" />
+        {/* Left Hand Mode Toggle */}
+        <TouchableOpacity style={styles.optionRow} onPress={toggleLeftHandMode}>
+          <View style={[styles.bullet, leftHandMode && styles.bulletActive]} />
+          <Text style={styles.optionText}>
+            Left hand mode {leftHandMode ? "ON" : "OFF"}
+          </Text>
+        </TouchableOpacity>
+
         <Option label="Location" />
         <Option label="Disable account" />
         <Option label="View Data" />
@@ -34,9 +41,12 @@ export default function Profile() {
         <Option label="Change Email" />
       </View>
 
-      {/* Back Button (bottom-right) */}
+      {/* Back Button (also respects left-hand mode) */}
       <TouchableOpacity
-        style={styles.backButton}
+        style={[
+          styles.backButton,
+          leftHandMode ? styles.leftButton : styles.rightButton,
+        ]}
         onPress={() => router.push("/home")}
       >
         <Text style={styles.backArrow}>←</Text>
@@ -57,7 +67,7 @@ function Option({ label }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#4c6233", // green background
+    backgroundColor: "#4c6233",
     paddingTop: 60,
     paddingHorizontal: 40,
   },
@@ -92,6 +102,9 @@ const styles = StyleSheet.create({
     borderColor: "#ffffff",
     marginRight: 10,
   },
+  bulletActive: {
+    backgroundColor: "#ffffff",
+  },
   optionText: {
     color: "#ffffff",
     fontSize: 16,
@@ -99,7 +112,6 @@ const styles = StyleSheet.create({
   backButton: {
     position: "absolute",
     bottom: 40,
-    right: 30,
     backgroundColor: "#f4cf65",
     width: 56,
     height: 56,
@@ -112,8 +124,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  backArrow: {
-    fontSize: 24,
-    color: "#333",
-  },
+  leftButton: { left: 30 },
+  rightButton: { right: 30 },
+  backArrow: { fontSize: 24, color: "#333" },
 });

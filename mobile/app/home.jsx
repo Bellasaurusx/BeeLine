@@ -1,23 +1,27 @@
 import React from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
+
+import { useLeftHand } from "./LeftHandContext";
+
 import MapIcon from "../assets/mapicon.png";
 import CamIcon from "../assets/cameraicon.png";
 import GalleryIcon from "../assets/galleryicon.png";
 import HomeIcon from "../assets/homeicon.png";
+import SettingsIcon from "../assets/settingsicon.png"; // <-- add this asset (or remove this line)
+
 import Img1 from "../assets/flower1.jpg";
 import Img2 from "../assets/flower2.jpg";
 
 export default function Home() {
   const router = useRouter();
+  const { leftHandMode } = useLeftHand();
 
   return (
     <View style={styles.container}>
       {/* Top Header */}
       <View style={styles.topHeader}>
-        <Link href="/profile">
-        <Text style={styles.headerItem}>⚙️ Settings</Text>
-      </Link>
+        <Text style={styles.headerItem}>BeeLine</Text>
       </View>
 
       {/* Daily Fact */}
@@ -43,46 +47,35 @@ export default function Home() {
           <Image source={Img2} style={styles.tileImage} />
           <Text style={styles.tileLabel}>Wellness</Text>
         </TouchableOpacity>
-
       </View>
 
-      {/* Right Sidebar Buttons */}
-      <View style={styles.sidebar}>
-        <TouchableOpacity 
-          style={styles.iconBtn}
-          onPress={() => router.push("/maps")}
-        >
+      {/* Sidebar Buttons (moves left/right based on Left Hand Mode) */}
+      <View
+        style={[
+          styles.sidebar,
+          leftHandMode ? styles.sidebarLeft : styles.sidebarRight,
+        ]}
+      >
+        <TouchableOpacity style={styles.iconBtn} onPress={() => router.push("/maps")}>
           <Image source={MapIcon} style={styles.iconImg} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => router.push("/compvis")}
-        >
+        <TouchableOpacity style={styles.iconBtn} onPress={() => router.push("/compvis")}>
           <Image source={CamIcon} style={styles.iconImg} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => router.push("/photogal")}
-        >
+        <TouchableOpacity style={styles.iconBtn} onPress={() => router.push("/photogal")}>
           <Image source={GalleryIcon} style={styles.iconImg} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => router.push("/home")}
-        >
-          <Image source={HomeIcon} style={styles.iconImg} />
+
+        <TouchableOpacity style={styles.iconBtn} onPress={() => router.push("/profile")}>
+          <Image source={SettingsIcon} style={styles.iconImg} />
         </TouchableOpacity>
       </View>
 
-
       {/* Back Button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => router.push("/login")}
-      >
+      <TouchableOpacity style={styles.backButton} onPress={() => router.push("/login")}>
         <Text style={styles.backArrow}>←</Text>
       </TouchableOpacity>
     </View>
@@ -97,21 +90,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 
-  iconBtn: {
-    backgroundColor: "#5C4033",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  iconImg: {
-    width: 28,
-    height: 28,
-    resizeMode: "contain",
-  },
-
   /* HEADER */
   topHeader: {
     backgroundColor: "#7fa96b",
@@ -123,7 +101,6 @@ const styles = StyleSheet.create({
   headerItem: {
     color: "#fff",
     fontSize: 18,
-    marginBottom: 6,
   },
 
   /* FACT BOX */
@@ -169,9 +146,14 @@ const styles = StyleSheet.create({
   /* SIDEBAR ICONS */
   sidebar: {
     position: "absolute",
-    right: 20,
     bottom: 100,
     gap: 16,
+  },
+  sidebarRight: {
+    right: 20,
+  },
+  sidebarLeft: {
+    left: 20,
   },
   iconBtn: {
     backgroundColor: "#F4EBD0",
@@ -181,8 +163,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  icon: {
-    fontSize: 22,
+  iconImg: {
+    width: 28,
+    height: 28,
+    resizeMode: "contain",
   },
 
   /* BACK BUTTON */
