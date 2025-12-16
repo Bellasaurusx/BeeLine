@@ -105,7 +105,7 @@ export default function Home() {
       </Link>
       </View>
 
-      {/* Daily Fact */}
+      {/* Daily Tip */}
       <View style={styles.factBox}>
         <Text style={styles.factText}>Daily Tip:</Text>
         <Text style={styles.factSub}>{dailyFact}</Text>
