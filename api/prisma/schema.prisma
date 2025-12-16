@@ -40,3 +40,14 @@ model Observation {
   pollinatorFriendly Boolean?
   createdAt      DateTime @default(now())
 }
+
+model Tip {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  insight   String
+  tip       String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

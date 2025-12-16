@@ -180,6 +180,29 @@ app.get("/api/observations", async (_req, res) => {
   }
 });
 
+app.get("/api/tips", async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+
+    const tips = await prisma.tip.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: {
+        id: true,
+        name: true,
+        insight: true,
+        tip: true,
+        imageUrl: true,
+        createdAt: true,
+      },
+    });
+
+    res.json(tips);
+  } catch (err) {
+    console.error("GET /api/tips error", err);
+    res.status(500).json({ error: "Failed to fetch tips" });
+  }
+});
 
 const PORT = Number(process.env.PORT) || 3000;
 

@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { Link, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import MapIcon from "../assets/mapicon.png";
 import CamIcon from "../assets/cameraicon.png";
 import GalleryIcon from "../assets/galleryicon.png";
@@ -8,8 +10,91 @@ import HomeIcon from "../assets/homeicon.png";
 import Img1 from "../assets/flower1.jpg";
 import Img2 from "../assets/flower2.jpg";
 
+// --- Daily Tip config ---
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+const TIPS_KEY = "beeline:tips:v1";
+const TIPS_FETCHED_AT_KEY = "beeline:tips:fetchedAt:v1";
+const TIP_OF_DAY_ID_KEY = "beeline:tipOfDayId:v1";
+const TIP_OF_DAY_DATE_KEY = "beeline:tipOfDayDate:v1";
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 export default function Home() {
   const router = useRouter();
+
+    // --- Daily Fact state ---
+  const [dailyFact, setDailyFact] = useState("Loading today's fact...");
+
+  // --- Load daily fact from DB tips (cached, changes once/day) ---
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDailyFact() {
+      try {
+        const today = new Date().toISOString().slice(0, 10); 
+
+        const [cachedJson, fetchedAtStr, savedId, savedDate] = await Promise.all([
+          AsyncStorage.getItem(TIPS_KEY),
+          AsyncStorage.getItem(TIPS_FETCHED_AT_KEY),
+          AsyncStorage.getItem(TIP_OF_DAY_ID_KEY),
+          AsyncStorage.getItem(TIP_OF_DAY_DATE_KEY),
+        ]);
+
+        let tips = cachedJson ? JSON.parse(cachedJson) : [];
+        const fetchedAt = fetchedAtStr ? Number(fetchedAtStr) : 0;
+        const isFresh = fetchedAt && Date.now() - fetchedAt < ONE_DAY_MS;
+
+        if (savedId && savedDate === today && Array.isArray(tips) && tips.length) {
+          const found = tips.find((t) => String(t.id) === String(savedId));
+          if (found && !cancelled) {
+            setDailyFact(found.tip || found.insight || "Check out today's tip.");
+            return;
+          }
+        }
+
+        if (!isFresh || !Array.isArray(tips) || tips.length === 0) {
+          if (!API_URL) throw new Error("EXPO_PUBLIC_API_URL is not set");
+
+          const res = await fetch(`${API_URL}/api/tips?limit=365`);
+          if (!res.ok) throw new Error(`Failed to fetch tips: ${res.status}`);
+          tips = await res.json();
+
+          await Promise.all([
+            AsyncStorage.setItem(TIPS_KEY, JSON.stringify(tips)),
+            AsyncStorage.setItem(TIPS_FETCHED_AT_KEY, String(Date.now())),
+          ]);
+        }
+
+        if (!Array.isArray(tips) || tips.length === 0) {
+          if (!cancelled) setDailyFact("No tips available yet.");
+          return;
+        }
+
+        // Deterministic "tip of the day" pick
+        const start = new Date(new Date().getFullYear(), 0, 0);
+        const diff = Date.now() - start.getTime();
+        const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const chosen = tips[dayOfYear % tips.length];
+
+        await Promise.all([
+          AsyncStorage.setItem(TIP_OF_DAY_ID_KEY, String(chosen.id)),
+          AsyncStorage.setItem(TIP_OF_DAY_DATE_KEY, today),
+        ]);
+
+        if (!cancelled) {
+          setDailyFact(chosen.tip || chosen.insight || "Check out today's tip.");
+        }
+      } catch (e) {
+        console.log("Daily fact error:", e);
+        if (!cancelled) setDailyFact("Bees fly about 20 mph.");
+      }
+    }
+
+    loadDailyFact();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -22,8 +107,8 @@ export default function Home() {
 
       {/* Daily Fact */}
       <View style={styles.factBox}>
-        <Text style={styles.factText}>Daily Facts:</Text>
-        <Text style={styles.factSub}>Bees fly about 20 mph.</Text>
+        <Text style={styles.factText}>Daily Tip:</Text>
+        <Text style={styles.factSub}>{dailyFact}</Text>
       </View>
 
       {/* Main Image Tiles */}
