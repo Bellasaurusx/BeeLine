@@ -39,6 +39,10 @@ model Observation {
   confidence     Float?   
   pollinatorFriendly Boolean?
   createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([scientificName])
+  @@index([lat, lng])
 }
 
 model Tip {

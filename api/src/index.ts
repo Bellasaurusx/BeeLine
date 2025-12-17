@@ -167,15 +167,66 @@ app.post("/api/observations", async (req, res) => {
   }
 });
 
-app.get("/api/observations", async (_req, res) => {
+app.get("/api/observations", async (req, res) => {
   try {
+    const limit = Math.min(Number(req.query.limit) || 200, 500);
+
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    const onlyWithPhotos = req.query.onlyWithPhotos === "true";
+    const sort = req.query.sort === "oldest" ? "oldest" : "newest";
+
+    const minLat = req.query.minLat ? Number(req.query.minLat) : null;
+    const maxLat = req.query.maxLat ? Number(req.query.maxLat) : null;
+    const minLng = req.query.minLng ? Number(req.query.minLng) : null;
+    const maxLng = req.query.maxLng ? Number(req.query.maxLng) : null;
+
+    const where: any = {};
+
+    if (onlyWithPhotos) {
+      where.imageUrl = { not: null };
+    }
+
+    if (q) {
+      where.OR = [
+        { commonName: { contains: q, mode: "insensitive" } },
+        { scientificName: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    if (
+      minLat !== null &&
+      maxLat !== null &&
+      minLng !== null &&
+      maxLng !== null &&
+      Number.isFinite(minLat) &&
+      Number.isFinite(maxLat) &&
+      Number.isFinite(minLng) &&
+      Number.isFinite(maxLng)
+    ) {
+      where.lat = { gte: minLat, lte: maxLat };
+      where.lng = { gte: minLng, lte: maxLng };
+    }
+
     const observations = await prisma.observation.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 500,
+      where,
+      take: limit,
+      orderBy: sort === "oldest" ? { createdAt: "asc" } : { createdAt: "desc" },
+      select: {
+        id: true,
+        lat: true,
+        lng: true,
+        commonName: true,
+        scientificName: true,
+        imageUrl: true,
+        confidence: true,
+        pollinatorFriendly: true,
+        createdAt: true,
+      },
     });
+
     res.json(observations);
   } catch (err) {
-    console.error(err);
+    console.error("GET /api/observations error", err);
     res.status(500).json({ error: "Failed to fetch observations" });
   }
 });

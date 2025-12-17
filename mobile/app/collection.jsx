@@ -32,7 +32,9 @@ export default function CollectionScreen() {
         setLoading(true);
         setError("");
 
-        const res = await fetch(`${API_URL}/api/observations`);
+        const res = await fetch(
+          `${API_URL}/api/observations?limit=300&sort=newest`
+        );
         if (!res.ok) throw new Error("Failed to load collection");
 
         const data = await res.json();
