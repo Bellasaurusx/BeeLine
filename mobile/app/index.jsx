@@ -1,5 +1,5 @@
 // app/index.jsx
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -8,11 +8,29 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Bkg from "../assets/bkg.png";
 
+const ONBOARD_KEY = "beeline:onboardingSeen:v1";
+
 export default function Splash() {
   const router = useRouter();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const seen = await AsyncStorage.getItem(ONBOARD_KEY);
+        if (!seen) {
+          // First time user → onboarding
+          router.replace("/onboarding");
+        }
+      } catch (e) {
+        // If storage fails for any reason, don't block the user
+        console.warn("Onboarding check failed:", e);
+      }
+    })();
+  }, [router]);
 
   return (
     <ImageBackground source={Bkg} style={styles.bg} resizeMode="cover">
@@ -48,7 +66,7 @@ const styles = StyleSheet.create({
 
   /* moved DOWN more (towards the vertical center) */
   centerContent: {
-    marginTop: "99%", 
+    marginTop: "99%",
     paddingHorizontal: 30,
     alignItems: "center",
   },
@@ -68,7 +86,6 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     fontWeight: "400",
   },
-
 
   button: {
     backgroundColor: "#f4b400",
