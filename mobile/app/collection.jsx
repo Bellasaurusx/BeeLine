@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
+  Alert,
+  Share,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BeeIcon from "../assets/bee_icon.png";
@@ -16,7 +18,7 @@ import BackButton from "./components/BackButton";
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function CollectionScreen() {
-  const insets = useSafeAreaInsets(); 
+  const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,16 +34,14 @@ export default function CollectionScreen() {
         setLoading(true);
         setError("");
 
-        const res = await fetch(
-          `${API_URL}/api/observations?limit=300&sort=newest`
-        );
+        const res = await fetch(`${API_URL}/api/observations?limit=300&sort=newest`);
         if (!res.ok) throw new Error("Failed to load collection");
 
         const data = await res.json();
         setItems(Array.isArray(data) ? data : []);
       } catch (e) {
-        console.log("Collection fetch error", e);
-        setError("Could not load collection.");
+        console.error(e);
+        setError("Could not load your collection. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -54,94 +54,96 @@ export default function CollectionScreen() {
     let result = [...items];
 
     if (onlyWithPhotos) {
-      result = result.filter((i) => !!i.imageUrl);
+      result = result.filter((x) => !!x?.imageUrl);
     }
 
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      result = result.filter((i) => {
-        const common = (i.commonName || "").toLowerCase();
-        const sci = (i.scientificName || "").toLowerCase();
-        return common.includes(q) || sci.includes(q);
+    const q = search.trim().toLowerCase();
+    if (q) {
+      result = result.filter((x) => {
+        const c = (x.commonName || "").toLowerCase();
+        const s = (x.scientificName || "").toLowerCase();
+        return c.includes(q) || s.includes(q);
       });
     }
 
-    result.sort((a, b) => {
-      const aName = (a.commonName || a.scientificName || "").toLowerCase();
-      const bName = (b.commonName || b.scientificName || "").toLowerCase();
-      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const collator = new Intl.Collator(undefined, { sensitivity: "base" });
 
-      switch (sortBy) {
-        case "oldest":
-          return aDate - bDate;
-        case "az":
-          return aName.localeCompare(bName);
-        case "za":
-          return bName.localeCompare(aName);
-        case "newest":
-        default:
-          return bDate - aDate;
-      }
-    });
+    if (sortBy === "newest") {
+      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (sortBy === "oldest") {
+      result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    } else if (sortBy === "az") {
+      result.sort((a, b) => collator.compare(a.commonName || a.scientificName || "", b.commonName || b.scientificName || ""));
+    } else if (sortBy === "za") {
+      result.sort((a, b) => collator.compare(b.commonName || b.scientificName || "", a.commonName || a.scientificName || ""));
+    }
 
     return result;
   }, [items, search, sortBy, onlyWithPhotos]);
 
-  if (selectedItem) {
-    const item = selectedItem;
-    const title = item.commonName || item.scientificName || "Unknown plant";
-    const sci = item.scientificName;
-    const date = item.createdAt ? new Date(item.createdAt).toLocaleString() : "";
-    const confidence =
-      typeof item.confidence === "number"
-        ? `${Math.round(item.confidence * 100)}%`
-        : null;
-
+  const SortChip = ({ label, active, onPress }) => {
     return (
-      <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => setSelectedItem(null)}>
-          <Text style={styles.backLink}>← Back to collection</Text>
-        </TouchableOpacity>
-
-        {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} style={styles.detailImage} />
-        ) : (
-          <View style={[styles.detailImage, styles.cardImagePlaceholder]}>
-            <Text style={styles.cardImagePlaceholderText}>No image</Text>
-          </View>
-        )}
-
-        <Text style={styles.detailTitle}>{title}</Text>
-        {!!sci && <Text style={styles.detailSubtitle}>{sci}</Text>}
-        {!!confidence && (
-          <Text style={styles.meta}>Identification confidence: {confidence}</Text>
-        )}
-        {!!date && <Text style={styles.meta}>Pinned on {date}</Text>}
-
-        <BackButton />
-      </View>
+      <TouchableOpacity
+        onPress={onPress}
+        style={[styles.chip, active ? styles.chipActive : null]}
+      >
+        <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>
+          {label}
+        </Text>
+      </TouchableOpacity>
     );
-  }
+  };
+
+  const openDetail = (item) => {
+    setSelectedItem(item);
+  };
+
+  const closeDetail = () => {
+    setSelectedItem(null);
+  };
+
+  const shareCollection = async () => {
+    try {
+      if (!items || items.length === 0) {
+        Alert.alert("Nothing to share yet", "Save a few plants first, then share your collection.");
+        return;
+      }
+
+      const lines = items.slice(0, 50).map((p, idx) => {
+        const name = p.commonName || p.scientificName || "Unknown plant";
+        const sci = p.scientificName ? ` (${p.scientificName})` : "";
+        const bee = p.pollinatorFriendly ? " 🐝" : "";
+        return `${idx + 1}. ${name}${sci}${bee}`;
+      });
+
+      const message =
+        "My BeeLine Collection\n\n" +
+        lines.join("\n") +
+        (items.length > 50 ? `\n\n…plus ${items.length - 50} more.` : "") +
+        "\n\nShared from BeeLine";
+
+      await Share.share({ message });
+    } catch (e) {
+      console.error("Share failed:", e);
+      Alert.alert("Share failed", "Something went wrong while trying to share.");
+    }
+  };
 
   const renderItem = ({ item }) => {
     const title = item.commonName || item.scientificName || "Unknown plant";
-    const subtitle =
-      item.commonName && item.scientificName ? item.scientificName : "";
+    const subtitle = item.commonName && item.scientificName ? item.scientificName : "";
     const date = item.createdAt ? new Date(item.createdAt).toLocaleString() : "";
     const confidence =
-      typeof item.confidence === "number"
-        ? `${Math.round(item.confidence * 100)}%`
-        : null;
+      typeof item.confidence === "number" ? `${Math.round(item.confidence * 100)}%` : null;
 
     return (
-      <TouchableOpacity style={styles.card} onPress={() => setSelectedItem(item)}>
-        {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
-        ) : (
-          <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
-            <Text style={styles.cardImagePlaceholderText}>No image</Text>
-          </View>
+      <TouchableOpacity style={styles.card} onPress={() => openDetail(item)}>
+        {!!item.imageUrl && (
+          <Image
+            source={{ uri: item.imageUrl }}
+            style={styles.cardImage}
+            resizeMode="cover"
+          />
         )}
 
         <View style={styles.cardContent}>
@@ -157,19 +159,71 @@ export default function CollectionScreen() {
 
           <View style={styles.metaRow}>
             {!!date && <Text style={styles.cardMeta}>{date}</Text>}
-            {!!confidence && <Text style={styles.cardMeta}>Confidence: {confidence}</Text>}
+            {!!confidence && <Text style={styles.cardMeta}>{confidence}</Text>}
           </View>
         </View>
       </TouchableOpacity>
     );
   };
 
+  if (selectedItem) {
+    const title = selectedItem.commonName || selectedItem.scientificName || "Unknown plant";
+    const subtitle =
+      selectedItem.commonName && selectedItem.scientificName ? selectedItem.scientificName : "";
+    const date = selectedItem.createdAt ? new Date(selectedItem.createdAt).toLocaleString() : "";
+    const confidence =
+      typeof selectedItem.confidence === "number"
+        ? `${Math.round(selectedItem.confidence * 100)}%`
+        : null;
+
+    return (
+      <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
+        <BackButton />
+        <TouchableOpacity onPress={closeDetail} style={styles.backLink}>
+          <Text style={styles.backLinkText}>← Back to collection</Text>
+        </TouchableOpacity>
+
+        <View style={styles.detailCard}>
+          {!!selectedItem.imageUrl && (
+            <Image source={{ uri: selectedItem.imageUrl }} style={styles.detailImage} resizeMode="cover" />
+          )}
+
+          <View style={styles.titleRow}>
+            <Text style={styles.detailTitle}>{title}</Text>
+            {selectedItem.pollinatorFriendly && (
+              <Image source={BeeIcon} style={styles.beeIcon} resizeMode="contain" />
+            )}
+          </View>
+
+          {!!subtitle && <Text style={styles.detailSubtitle}>{subtitle}</Text>}
+
+          {!!date && <Text style={styles.meta}>Pinned: {date}</Text>}
+          {!!confidence && <Text style={styles.meta}>Confidence: {confidence}</Text>}
+
+          {!!selectedItem.pollinatorFriendly && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>Pollinator-friendly</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
-      <Text style={styles.heading}>My Collection</Text>
-      <Text style={styles.subheading}>
-        Plants that have been pinned from the Identify screen.
-      </Text>
+      <View style={styles.topRow}>
+        <BackButton />
+      </View>
+
+      <View style={styles.headerRow}>
+        <Text style={styles.heading}>My Collection</Text>
+        <TouchableOpacity style={styles.shareBtn} onPress={shareCollection}>
+          <Text style={styles.shareBtnText}>Share</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.subheading}>Plants that have been pinned from the Identify screen.</Text>
 
       <TextInput
         style={styles.searchInput}
@@ -186,10 +240,7 @@ export default function CollectionScreen() {
       </View>
 
       <TouchableOpacity
-        style={[
-          styles.filterToggle,
-          onlyWithPhotos ? styles.filterToggleActive : null,
-        ]}
+        style={[styles.filterToggle, onlyWithPhotos ? styles.filterToggleActive : null]}
         onPress={() => setOnlyWithPhotos((v) => !v)}
       >
         <Text
@@ -218,111 +269,105 @@ export default function CollectionScreen() {
           renderItem={renderItem}
           contentContainerStyle={filtered.length === 0 ? styles.emptyListContainer : undefined}
           ListEmptyComponent={
-            <Text style={styles.meta}>
-              No items yet. Pin a plant from the Identify screen to see it here.
+            <Text style={styles.emptyText}>
+              No items yet. Identify a plant and pin it to your map to build your collection.
             </Text>
           }
         />
       )}
-
-      <BackButton />
     </View>
   );
 }
 
-function SortChip({ label, active, onPress }) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.chip, active ? styles.chipActive : null]}
-    >
-      <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#fff" },
-  heading: { fontSize: 24, fontWeight: "700", marginBottom: 4, marginTop: 4 },
-  subheading: { color: "#555", marginBottom: 12 },
+  container: { flex: 1, backgroundColor: "#fff", paddingHorizontal: 16 },
+  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+
+  heading: { fontSize: 28, fontWeight: "800", marginTop: 6 },
+  subheading: { marginTop: 6, color: "#666" },
+
   searchInput: {
+    marginTop: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 8,
-  },
-  chipRow: { flexDirection: "row", marginBottom: 8 },
-  chip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 8,
-  },
-  chipActive: { backgroundColor: "#111", borderColor: "#111" },
-  chipText: { fontSize: 12, color: "#333" },
-  chipTextActive: { color: "#fff" },
-
-  filterToggle: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginBottom: 12,
-  },
-  filterToggleActive: { backgroundColor: "#111", borderColor: "#111" },
-  filterToggleText: { fontSize: 12, color: "#333" },
-  filterToggleTextActive: { color: "#fff" },
-
-  center: { alignItems: "center", justifyContent: "center", paddingVertical: 24 },
-  meta: { color: "#666", marginTop: 8 },
-  error: { color: "red", textAlign: "center", marginTop: 8 },
-
-  emptyListContainer: {
-    flexGrow: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 40,
-  },
-
-  card: {
-    flexDirection: "row",
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#eee",
-    marginBottom: 10,
     backgroundColor: "#fafafa",
   },
-  cardImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 10,
-    marginRight: 12,
-    backgroundColor: "#ddd",
+
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  chip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    backgroundColor: "#fff",
   },
-  cardImagePlaceholder: { alignItems: "center", justifyContent: "center" },
-  cardImagePlaceholderText: { fontSize: 10, color: "#555" },
+  chipActive: { borderColor: "#2E6F5B", backgroundColor: "#E8F3EF" },
+  chipText: { color: "#333", fontWeight: "600" },
+  chipTextActive: { color: "#2E6F5B" },
 
-  cardContent: { flex: 1 },
-  cardTitle: { fontWeight: "700", marginBottom: 2 },
-  cardSubtitle: { color: "#555", marginBottom: 4 },
-  metaRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 4 },
-  cardMeta: { color: "#888", fontSize: 12 },
+  filterToggle: {
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    backgroundColor: "#fff",
+  },
+  filterToggleActive: { borderColor: "#2E6F5B", backgroundColor: "#E8F3EF" },
+  filterToggleText: { color: "#333", fontWeight: "600" },
+  filterToggleTextActive: { color: "#2E6F5B" },
 
-  backLink: {
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  error: { color: "#B00020", fontWeight: "700" },
+  meta: { color: "#666", marginTop: 10 },
+
+  emptyListContainer: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 24 },
+  emptyText: { textAlign: "center", color: "#666" },
+
+  card: {
+    marginTop: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#eee",
+    backgroundColor: "#fff",
+    overflow: "hidden",
+  },
+  cardImage: { width: "100%", height: 140, backgroundColor: "#eee" },
+  cardContent: { padding: 12 },
+  cardTitle: { fontSize: 18, fontWeight: "700" },
+  cardSubtitle: { marginTop: 2, fontStyle: "italic", color: "#555" },
+
+  metaRow: { marginTop: 8, flexDirection: "row", justifyContent: "space-between" },
+  cardMeta: { color: "#666", fontSize: 12 },
+
+  backLink: { marginTop: 12, marginBottom: 6 },
+  backLinkText: { color: "#2E6F5B", fontWeight: "700" },
+
+  detailCard: {
+    marginTop: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#eee",
+    backgroundColor: "#fff",
+  },
+
+  badge: {
     marginTop: 12,
     alignSelf: "flex-start",
-    borderBottomWidth: 1,
-    paddingBottom: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: "#E8F3EF",
+    borderWidth: 1,
+    borderColor: "#2E6F5B",
   },
+  badgeText: { color: "#2E6F5B", fontWeight: "800" },
 
   detailImage: {
     width: "100%",
@@ -337,4 +382,19 @@ const styles = StyleSheet.create({
 
   titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   beeIcon: { width: 20, height: 20, marginLeft: 6 },
+
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+
+  shareBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: "#2E6F5B",
+  },
+  shareBtnText: { color: "#fff", fontWeight: "700" },
 });
