@@ -17,6 +17,25 @@ import BackButton from "./components/BackButton";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
+function PollinatorBadge({ variant = "icon" }) {
+  if (variant === "pill") {
+    return (
+      <View style={styles.pollinatorPill}>
+        <View>
+          <Image source={BeeIcon} style={styles.pollinatorBee} resizeMode="contain" />
+        </View>
+        <Text style={styles.pollinatorPillText}>Pollinator-Friendly</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.pollinatorDot}>
+      <Image source={BeeIcon} style={styles.pollinatorBee} resizeMode="contain" />
+    </View>
+  );
+}
+
 export default function CollectionScreen() {
   const insets = useSafeAreaInsets();
 
@@ -73,9 +92,19 @@ export default function CollectionScreen() {
     } else if (sortBy === "oldest") {
       result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     } else if (sortBy === "az") {
-      result.sort((a, b) => collator.compare(a.commonName || a.scientificName || "", b.commonName || b.scientificName || ""));
+      result.sort((a, b) =>
+        collator.compare(
+          a.commonName || a.scientificName || "",
+          b.commonName || b.scientificName || ""
+        )
+      );
     } else if (sortBy === "za") {
-      result.sort((a, b) => collator.compare(b.commonName || b.scientificName || "", a.commonName || a.scientificName || ""));
+      result.sort((a, b) =>
+        collator.compare(
+          b.commonName || b.scientificName || "",
+          a.commonName || a.scientificName || ""
+        )
+      );
     }
 
     return result;
@@ -83,24 +112,14 @@ export default function CollectionScreen() {
 
   const SortChip = ({ label, active, onPress }) => {
     return (
-      <TouchableOpacity
-        onPress={onPress}
-        style={[styles.chip, active ? styles.chipActive : null]}
-      >
-        <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>
-          {label}
-        </Text>
+      <TouchableOpacity onPress={onPress} style={[styles.chip, active ? styles.chipActive : null]}>
+        <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{label}</Text>
       </TouchableOpacity>
     );
   };
 
-  const openDetail = (item) => {
-    setSelectedItem(item);
-  };
-
-  const closeDetail = () => {
-    setSelectedItem(null);
-  };
+  const openDetail = (item) => setSelectedItem(item);
+  const closeDetail = () => setSelectedItem(null);
 
   const shareCollection = async () => {
     try {
@@ -139,20 +158,14 @@ export default function CollectionScreen() {
     return (
       <TouchableOpacity style={styles.card} onPress={() => openDetail(item)}>
         {!!item.imageUrl && (
-          <Image
-            source={{ uri: item.imageUrl }}
-            style={styles.cardImage}
-            resizeMode="cover"
-          />
+          <Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="cover" />
         )}
 
         <View style={styles.cardContent}>
           <View style={styles.titleRow}>
             <Text style={styles.cardTitle}>{title}</Text>
 
-            {item.pollinatorFriendly && (
-              <Image source={BeeIcon} style={styles.beeIcon} resizeMode="contain" />
-            )}
+            {item.pollinatorFriendly ? <PollinatorBadge variant="icon" /> : null}
           </View>
 
           {!!subtitle && <Text style={styles.cardSubtitle}>{subtitle}</Text>}
@@ -185,26 +198,23 @@ export default function CollectionScreen() {
 
         <View style={styles.detailCard}>
           {!!selectedItem.imageUrl && (
-            <Image source={{ uri: selectedItem.imageUrl }} style={styles.detailImage} resizeMode="cover" />
+            <Image
+              source={{ uri: selectedItem.imageUrl }}
+              style={styles.detailImage}
+              resizeMode="cover"
+            />
           )}
 
           <View style={styles.titleRow}>
             <Text style={styles.detailTitle}>{title}</Text>
-            {selectedItem.pollinatorFriendly && (
-              <Image source={BeeIcon} style={styles.beeIcon} resizeMode="contain" />
-            )}
+            {selectedItem.pollinatorFriendly ? <PollinatorBadge variant="icon" /> : null}
           </View>
 
           {!!subtitle && <Text style={styles.detailSubtitle}>{subtitle}</Text>}
-
           {!!date && <Text style={styles.meta}>Pinned: {date}</Text>}
           {!!confidence && <Text style={styles.meta}>Confidence: {confidence}</Text>}
 
-          {!!selectedItem.pollinatorFriendly && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Pollinator-friendly</Text>
-            </View>
-          )}
+          {selectedItem.pollinatorFriendly ? <PollinatorBadge variant="pill" /> : null}
         </View>
       </View>
     );
@@ -357,18 +367,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
 
-  badge: {
-    marginTop: 12,
-    alignSelf: "flex-start",
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: "#E8F3EF",
-    borderWidth: 1,
-    borderColor: "#2E6F5B",
-  },
-  badgeText: { color: "#2E6F5B", fontWeight: "800" },
-
   detailImage: {
     width: "100%",
     height: 220,
@@ -381,7 +379,6 @@ const styles = StyleSheet.create({
   detailSubtitle: { fontSize: 16, fontStyle: "italic", color: "#555", marginBottom: 8 },
 
   titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  beeIcon: { width: 20, height: 20, marginLeft: 6 },
 
   headerRow: {
     flexDirection: "row",
@@ -397,4 +394,27 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9b233",
   },
   shareBtnText: { color: "#000", fontWeight: "700" },
+
+  pollinatorDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#F4B400",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8,
+  },
+  pollinatorBee: { width: 16, height: 16 },
+
+  pollinatorPill: {
+    marginTop: 12,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: "#F4B400",
+  },
+  pollinatorPillText: { color: "#444", fontWeight: "600" },
 });
