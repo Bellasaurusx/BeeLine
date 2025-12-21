@@ -95,6 +95,10 @@ export default function MapScreen() {
   <head>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+
     <style>
       :root { --safeTop: ${offsetTopPx}px; }
       html,body,#map{height:100%;margin:0}
@@ -154,6 +158,9 @@ export default function MapScreen() {
     <div class="recenter-btn" id="recenter">My Location</div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
     <script>
       const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -172,8 +179,20 @@ export default function MapScreen() {
 
       const baseLayers = { OSM: osm, Humanitarian: hot };
 
-      const pinLayer = L.layerGroup().addTo(map);
-      const communityLayer = L.layerGroup().addTo(map);
+      const pinLayer = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        maxClusterRadius: 40,
+      });
+
+      const communityLayer = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        maxClusterRadius: 40,
+      });
+
+      map.addLayer(pinLayer);
+      map.addLayer(communityLayer);
 
       L.control
         .layers(
