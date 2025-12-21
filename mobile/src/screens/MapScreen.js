@@ -96,6 +96,7 @@ export default function MapScreen() {
 
       .leaflet-control-layers{
         box-shadow:0 2px 8px rgba(0,0,0,0.15);
+        background:#f9b233;
         border-radius:8px;
       }
 
@@ -104,11 +105,11 @@ export default function MapScreen() {
         z-index:1000;
         right:12px;
         top: calc(var(--safeTop) + 10px);
-        background:#fff;
+        background:#f9b233;
         border-radius:10px;
         padding:10px 12px;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-        font-size:14px;
+        font-size:16px;
         box-shadow:0 2px 6px rgba(0,0,0,0.2);
         user-select:none;
       }
@@ -117,6 +118,7 @@ export default function MapScreen() {
         width: 36px;
         height: 36px;
         line-height: 36px;
+        background:#f9b233;
         font-size: 18px;
       }
     </style>
@@ -138,10 +140,6 @@ export default function MapScreen() {
         maxZoom: 19,
         attribution: '© OSM HOT'
       });
-      const toner = L.tileLayer('https://stamen-tiles.a.ssl.fastly.net/toner-lite/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© Stamen'
-      });
 
       const map = L.map('map', {
         center: [${initial.lat}, ${initial.lng}],
@@ -152,7 +150,6 @@ export default function MapScreen() {
       const baseLayers = {
         OSM: osm,
         Humanitarian: hot,
-        "Toner Lite": toner
       };
 
       // ---------------------------

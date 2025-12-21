@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#4c6233", paddingHorizontal: 16 },
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
 
-  heading: { fontSize: 28, fontWeight: "800", marginTop: 6 },
+  heading: { fontSize: 28, color: "#fff", fontWeight: "800", marginTop: 6 },
   subheading: { marginTop: 6, color: "#fff" },
 
   searchInput: {

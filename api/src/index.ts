@@ -15,6 +15,41 @@ function normalizeScientificName(name: string): string {
   return name.trim();
 }
 
+function normalizeName(s: string): string {
+  return (s || "")
+  .toLowerCase()
+  .replace(/[^\p{L}\p{N}\s-]/gu, "")
+  .replace(/\s+/g, " ")
+  .trim();
+}
+
+function isPollinatorFriendlyName(scientificName?: string, commonName?: string) {
+  const rawSci = (scientificName || "").trim();
+  const sci2 = normalizeScientificName(rawSci);
+  const sciNorm = normalizeName(rawSci);
+  const sci2Norm = normalizeName(sci2);
+  const commonNorm = normalizeName(commonName || "");
+
+  const hit =
+    POLLINATOR_SPECIES[rawSci] ||
+    POLLINATOR_SPECIES[sci2] ||
+    POLLINATOR_SPECIES[sciNorm] ||
+    POLLINATOR_SPECIES[sci2Norm];
+
+  if (hit?.friendly === true) return true;
+
+  for (const [key, val] of Object.entries(POLLINATOR_SPECIES)) {
+    if (val?.friendly !== true) continue;
+    const k = normalizeName(key);
+
+    if (k && (k === sciNorm || k === sci2Norm || (commonNorm && k === commonNorm))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -62,6 +97,27 @@ app.get("/api/identifications", async (_req, res) => {
     take: 200,
   });
   res.json(rows);
+});
+
+app.post("/api/pollinator-check", (req, res) => {
+  try {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+
+    const results = items.map((it: any) => {
+      const scientificName =
+        typeof it?.scientificName === "string" ? it.scientificName : "";
+      const commonName = typeof it?.commonName === "string" ? it.commonName : "";
+
+      return {
+        scientificName,
+        pollinatorFriendly: isPollinatorFriendlyName(scientificName, commonName),
+      };
+    });
+
+    res.json({ results });
+  } catch (e: any) {
+    res.status(500).json({ error: String(e?.message || e) });
+  }
 });
 
 app.post("/api/observations", async (req, res) => {

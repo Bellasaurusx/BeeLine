@@ -15,11 +15,50 @@ import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BackButton from "./components/BackButton";
 import { addNotification } from "../src/utils/notificationsStore";
+import BeeIcon from "../assets/bee_icon.png";
 
 const PLANTNET_API_KEY = process.env.EXPO_PUBLIC_PLANTNET_API_KEY;
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
 
 const toPercent = (p) => `${Math.round((p || 0) * 100)}%`;
+
+async function attachPollinatorFlags(enriched) {
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+  if (!API_URL || !Array.isArray(enriched) || enriched.length === 0) {
+    return enriched;
+  }
+
+  try {
+    const items = enriched.map((x) => ({
+      scientificName: x.scientificName,
+      commonName: x.commonName || (Array.isArray(x.commonNames) ? x.commonNames[0] : "") || "",
+    }));
+
+    const res = await fetch(`${API_URL}/api/pollinator-check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items }),
+    });
+
+    if (!res.ok) return enriched;
+
+    const data = await res.json();
+    const results = Array.isArray(data?.results) ? data.results : [];
+
+    const flagMap = new Map(
+      results.map((r) => [String(r.scientificName), Boolean(r.pollinatorFriendly)])
+    );
+
+    return enriched.map((x) => ({
+      ...x,
+      pollinatorFriendly: flagMap.get(String(x.scientificName)) === true,
+    }));
+  } catch (e) {
+    console.log("pollinator-check failed:", e);
+    return enriched;
+  }
+}
 
 async function identifyWithPlantNet(imageAsset) {
   const form = new FormData();
@@ -204,6 +243,27 @@ export default function IdentifyScreen() {
     setResults([]);
   };
 
+  const takePhoto = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission needed", "Camera access is required.");
+      return;
+    }
+
+    const res = await ImagePicker.launchCameraAsync({
+      quality: 0.7,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    });
+
+    if (res.canceled) return;
+
+    const asset = res.assets?.[0];
+    if (!asset?.uri) return;
+
+    setImageAsset(asset);
+    setResults([]);
+  };
+
   const identify = async () => {
     if (!imageAsset?.uri) {
       Alert.alert("No image", "Choose a photo first.");
@@ -234,8 +294,9 @@ export default function IdentifyScreen() {
           "We’re not very confident about this match. Try another photo or angle."
         );
       }
+      const withFlags = await attachPollinatorFlags(enriched);
 
-      setResults(enriched);
+      setResults(withFlags);
     } catch (err) {
       console.error(err);
       Alert.alert("Error", err.message || "Identification failed.");
@@ -349,6 +410,10 @@ export default function IdentifyScreen() {
           <Text style={styles.btnText}>Choose Photo</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.btn} onPress={takePhoto}>
+          <Text style={styles.btnText}>Take Photo</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.btn, !imageAsset && styles.btnDisabled]}
           onPress={identify}
@@ -407,12 +472,19 @@ export default function IdentifyScreen() {
               )}
 
               <View style={{ flex: 1 }}>
-                <Text style={styles.commonName}>{common}</Text>
+                <View style={styles.titleRow}>
+                  <Text style={styles.commonName}>{common}</Text>
+
+                  {item.pollinatorFriendly === true && (
+                    <View style={styles.badge}>
+                      <Image source={BeeIcon} style={styles.badgeIcon} />
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.sciName}>{sci}</Text>
                 <Text style={styles.confidence}>
                   Confidence: {toPercent(item.score)}
                 </Text>
-
                 <View style={styles.cardBtns}>
                   <TouchableOpacity
                     style={styles.cardBtn}
@@ -462,8 +534,8 @@ export default function IdentifyScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 16 },
-  h1: { fontSize: 22, fontWeight: "700", marginTop: 8, marginBottom: 12 },
+  container: { flex: 1, backgroundColor: "#4c6233", padding: 16 },
+  h1: { fontSize: 22, fontWeight: "700", color: "#fff", marginTop: 8, marginBottom: 12 },
   row: { flexDirection: "row", gap: 12, marginBottom: 12 },
   btn: {
     backgroundColor: "#F9B233",
@@ -472,18 +544,30 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   btnDisabled: { opacity: 0.5 },
-  btnText: { fontWeight: "700" },
-  preview: { width: "100%", height: 220, borderRadius: 12, marginBottom: 12 },
-  subtle: { color: "#666", marginVertical: 8 },
+  btnText: { fontWeight: "800" },
+  preview: { width: "100%",
+  height: 220,
+  borderRadius: 12,
+  marginBottom: 12,
+  borderWidth: 4,
+  borderColor: "#7fa96b",},
+  subtle: { color: "#fff", marginVertical: 8 },
   loadingRow: { flexDirection: "row", alignItems: "center", marginVertical: 8 },
   card: {
     flexDirection: "row",
     gap: 12,
+    backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: "#eee",
     borderRadius: 12,
     padding: 12,
     marginBottom: 10,
+
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   thumb: {
     width: 72,
@@ -492,7 +576,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   thumbPlaceholder: { alignItems: "center", justifyContent: "center" },
-  thumbText: { fontSize: 10, color: "#999" },
+  thumbText: { fontSize: 10, color: "#fff" },
   commonName: { fontSize: 16, fontWeight: "700" },
   sciName: { fontSize: 13, fontStyle: "italic", color: "#333", marginTop: 2 },
   confidence: { fontSize: 12, color: "#555", marginTop: 4 },
@@ -512,4 +596,22 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   cardBtnOutlineText: { color: "#111", fontWeight: "700" },
+
+    titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  badge: {
+  backgroundColor: "#F4B400",
+  padding: 6,
+  borderRadius: 999,
+  alignItems: "center",
+  justifyContent: "center",
+  },
+  badgeIcon: {
+    width: 16,
+    height: 16,
+    resizeMode: "contain",
+  },
 });

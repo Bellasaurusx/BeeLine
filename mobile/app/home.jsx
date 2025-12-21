@@ -280,6 +280,8 @@ const styles = StyleSheet.create({
   /* FACT BOX */
   factBox: {
     backgroundColor: "#fff",
+    borderColor: "#7fa96b",
+    borderWidth: 3,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 12,
