@@ -5,14 +5,40 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { signOut } from "firebase/auth";
+
+import { auth } from "../FirebaseConfig"; // adjust path if needed
 import ProfilePic from "../assets/profile.jpg";
 import { useLeftHand } from "./LeftHandContext";
 
 export default function Profile() {
   const router = useRouter();
   const { leftHandMode, toggleLeftHandMode } = useLeftHand();
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Log out",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Log out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut(auth);
+              router.replace("/login");
+            } catch (err) {
+              Alert.alert("Error", err.message);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -39,9 +65,17 @@ export default function Profile() {
         <Option label="View Data" />
         <Option label="Change password" />
         <Option label="Change Email" />
+
+        {/* Logout */}
+        <TouchableOpacity style={styles.optionRow} onPress={handleLogout}>
+          <View style={styles.bullet} />
+          <Text style={[styles.optionText, styles.logoutText]}>
+            Log out
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Back Button (also respects left-hand mode) */}
+      {/* Back Button */}
       <TouchableOpacity
         style={[
           styles.backButton,
@@ -109,6 +143,10 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 16,
   },
+  logoutText: {
+    color: "#f4cf65",
+    fontWeight: "600",
+  },
   backButton: {
     position: "absolute",
     bottom: 40,
@@ -126,5 +164,9 @@ const styles = StyleSheet.create({
   },
   leftButton: { left: 30 },
   rightButton: { right: 30 },
-  backArrow: { fontSize: 24, color: "#333" },
+  backArrow: {
+    fontSize: 24,
+    color: "#333",
+    fontWeight: "600",
+  },
 });
