@@ -280,11 +280,11 @@ export default function CollectionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", paddingHorizontal: 16 },
+  container: { flex: 1, backgroundColor: "#4c6233", paddingHorizontal: 16 },
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
 
   heading: { fontSize: 28, fontWeight: "800", marginTop: 6 },
-  subheading: { marginTop: 6, color: "#666" },
+  subheading: { marginTop: 6, color: "#fff" },
 
   searchInput: {
     marginTop: 14,
@@ -305,9 +305,9 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
     backgroundColor: "#fff",
   },
-  chipActive: { borderColor: "#2E6F5B", backgroundColor: "#E8F3EF" },
+  chipActive: { borderColor: "#f9b233", backgroundColor: "#E8F3EF" },
   chipText: { color: "#333", fontWeight: "600" },
-  chipTextActive: { color: "#2E6F5B" },
+  chipTextActive: { color: "#f9b233" },
 
   filterToggle: {
     marginTop: 10,
@@ -318,9 +318,9 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
     backgroundColor: "#fff",
   },
-  filterToggleActive: { borderColor: "#2E6F5B", backgroundColor: "#E8F3EF" },
+  filterToggleActive: { borderColor: "#f9b233", backgroundColor: "#E8F3EF" },
   filterToggleText: { color: "#333", fontWeight: "600" },
-  filterToggleTextActive: { color: "#2E6F5B" },
+  filterToggleTextActive: { color: "#f9b233" },
 
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   error: { color: "#B00020", fontWeight: "700" },
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   cardMeta: { color: "#666", fontSize: 12 },
 
   backLink: { marginTop: 12, marginBottom: 6 },
-  backLinkText: { color: "#2E6F5B", fontWeight: "700" },
+  backLinkText: { color: "#fff", fontWeight: "700" },
 
   detailCard: {
     marginTop: 12,
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 12,
-    backgroundColor: "#2E6F5B",
+    backgroundColor: "#f9b233",
   },
-  shareBtnText: { color: "#fff", fontWeight: "700" },
+  shareBtnText: { color: "#000", fontWeight: "700" },
 });
