@@ -14,6 +14,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BackButton from "./components/BackButton";
+import { addNotification } from "../src/utils/notificationsStore";
 
 const PLANTNET_API_KEY = process.env.EXPO_PUBLIC_PLANTNET_API_KEY;
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
@@ -305,6 +306,12 @@ export default function IdentifyScreen() {
         Alert.alert("Already pinned", "A pin for this plant already exists near here.");
       } else {
         Alert.alert("Pinned!", "Saved to your BeeLine map.");
+
+        await addNotification({
+          title: "Pinned to your map",
+          body: "Nice find. Your plant was added to your personal map and collection.",
+          type: "pin",
+        });
       }
     } catch (err) {
       console.error("saveIdentification error", err);
@@ -459,7 +466,7 @@ const styles = StyleSheet.create({
   h1: { fontSize: 22, fontWeight: "700", marginTop: 8, marginBottom: 12 },
   row: { flexDirection: "row", gap: 12, marginBottom: 12 },
   btn: {
-    backgroundColor: "#f0c93d",
+    backgroundColor: "#F9B233",
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,

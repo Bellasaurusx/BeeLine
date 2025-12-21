@@ -3,12 +3,16 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { Link, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { useFocusEffect } from "@react-navigation/native";
+import { getUnread } from "../src/utils/notificationsStore";
+
 import MapIcon from "../assets/mapicon.png";
 import CamIcon from "../assets/cameraicon.png";
 import GalleryIcon from "../assets/galleryicon.png";
 import HomeIcon from "../assets/homeicon.png";
 import Img1 from "../assets/flower1.jpg";
 import Img2 from "../assets/flower2.jpg";
+import BellIcon from "../assets/bell-icon.png";
 
 // --- Daily Tip config ---
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -24,6 +28,27 @@ export default function Home() {
 
     // --- Daily Fact state ---
   const [dailyFact, setDailyFact] = useState("Loading today's fact...");
+
+  const [hasUnread, setHasUnread] = useState(false);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let mounted = true;
+
+      (async () => {
+        try {
+          const unread = await getUnread();
+          if (mounted) setHasUnread(unread);
+        } catch (e) {
+          console.log("Unread check failed:", e);
+        }
+      })();
+
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
 
   // --- Load daily fact from DB tips (cached, changes once/day) ---
   useEffect(() => {
@@ -100,9 +125,23 @@ export default function Home() {
     <View style={styles.container}>
       {/* Top Header */}
       <View style={styles.topHeader}>
-        <Link href="/profile">
-        <Text style={styles.headerItem}>⚙️ Settings</Text>
-      </Link>
+        {/* Settings */}
+        <View style={styles.headerLeft}>
+          <Link href="/profile" asChild>
+            <TouchableOpacity>
+              <Text style={styles.headerItem}>⚙️ Settings</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
+
+        {/* Notifications */}
+        <TouchableOpacity
+          onPress={() => router.push("/notifications")}
+          style={styles.bellWrap}
+        >
+          <Text style={styles.bell}>🔔</Text>
+          {hasUnread && <View style={styles.redDot} />}
+        </TouchableOpacity>
       </View>
 
       {/* Daily Tip */}
@@ -204,11 +243,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 6,
     marginBottom: 25,
+
+    flexDirection: "row",
+    alignItems: "center",
   },
+
+  headerLeft: {
+    flex: 1,            
+  },
+
   headerItem: {
     color: "#fff",
     fontSize: 18,
-    marginBottom: 6,
+    marginBottom: 0,      
+  },
+
+  bellWrap: {
+    position: "relative",
+  },
+
+  bell: {
+    fontSize: 22,
+    color: "#fff",
+  },
+  /* Notification Dot */
+  redDot: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#D0021B",
   },
 
   /* FACT BOX */
