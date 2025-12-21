@@ -1,5 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, StyleSheet, Platform, Image } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Platform,
+  Image,
+  Text,
+  Dimensions,
+} from "react-native";
 import WebView from "react-native-webview";
 import * as Location from "expo-location";
 import BackButton from "../../app/components/BackButton";
@@ -14,9 +21,7 @@ export default function MapScreen() {
   const webRef = useRef(null);
 
   const [ready, setReady] = useState(false);
-
   const [pins, setPins] = useState([]);
-
   const [coords, setCoords] = useState({ lat: 37.7749, lng: -122.4194 });
 
   const myPinUri = Image.resolveAssetSource(MyPinIcon)?.uri;
@@ -73,7 +78,6 @@ export default function MapScreen() {
     }
 
     const payload = { myPins, communityPins };
-
     const js = `window._setPins(${JSON.stringify(payload)}); true;`;
     webRef.current.injectJavaScript(js);
   }, [ready, pins]);
@@ -82,7 +86,10 @@ export default function MapScreen() {
 
   const topOffset = Math.round((insets.top || 0) + 12);
 
-  // Leaflet HTML 
+  const { height: screenH } = Dimensions.get("window");
+  const MAP_FRAME_HEIGHT = Math.min(600, Math.round(screenH * 0.7));
+
+  // Leaflet HTML
   const leafletHTML = (initial, offsetTopPx) => `<!DOCTYPE html>
 <html>
   <head>
@@ -91,13 +98,30 @@ export default function MapScreen() {
     <style>
       :root { --safeTop: ${offsetTopPx}px; }
       html,body,#map{height:100%;margin:0}
+      .leaflet-top {
+        top: calc(var(--safeTop) + 1px) !important;
+      }
 
-      .leaflet-top { top: var(--safeTop) !important; }
+      .leaflet-left {
+        left: 1px !important;
+      }
+
+      .leaflet-right {
+        right: 1px !important;
+      }
 
       .leaflet-control-layers{
-        box-shadow:0 2px 8px rgba(0,0,0,0.15);
+        box-shadow:0 2px 6px rgba(0,0,0,0.15);
         background:#f9b233;
-        border-radius:8px;
+        border-radius:10px;
+        padding: 6px 8px;
+        font-size: 14px;
+      }
+
+      .leaflet-control-layers-toggle{
+        width: 34px !important;
+        height: 34px !important;
+        background-size: 18px 18px !important;
       }
 
       .recenter-btn{
@@ -107,17 +131,19 @@ export default function MapScreen() {
         top: calc(var(--safeTop) + 10px);
         background:#f9b233;
         border-radius:10px;
-        padding:10px 12px;
+        padding:8px 10px;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-        font-size:16px;
+        font-size:14px;
+        font-weight:600;
         box-shadow:0 2px 6px rgba(0,0,0,0.2);
         user-select:none;
       }
 
+
       .leaflet-control-zoom a {
-        width: 36px;
-        height: 36px;
-        line-height: 36px;
+        width: 32px;
+        height: 32px;
+        line-height: 25px;
         background:#f9b233;
         font-size: 18px;
       }
@@ -129,9 +155,6 @@ export default function MapScreen() {
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-      // ---------------------------
-      // Base map layers
-      // ---------------------------
       const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OSM'
@@ -147,31 +170,19 @@ export default function MapScreen() {
         layers: [osm]
       });
 
-      const baseLayers = {
-        OSM: osm,
-        Humanitarian: hot,
-      };
+      const baseLayers = { OSM: osm, Humanitarian: hot };
 
-      // ---------------------------
-      // Overlay layers 
-      // ---------------------------
-      const pinLayer = L.layerGroup().addTo(map);        // My Pins
-      const communityLayer = L.layerGroup().addTo(map);  // Community Pins
+      const pinLayer = L.layerGroup().addTo(map);
+      const communityLayer = L.layerGroup().addTo(map);
 
       L.control
         .layers(
           baseLayers,
-          {
-            "My Pins": pinLayer,
-            "Community": communityLayer
-          },
-          { position: "topleft", collapsed: false }
+          { "My Pins": pinLayer, "Community": communityLayer },
+          { position: "topleft", collapsed: true }
         )
         .addTo(map);
 
-      // ---------------------------
-      // Custom icons (from RN assets)
-      // ---------------------------
       const MY_PIN_URL = ${JSON.stringify(myPinUri || "")};
       const COMMUNITY_PIN_URL = ${JSON.stringify(communityPinUri || "")};
       const MY_LOCATION_URL = ${JSON.stringify(myLocationPinUri || "")};
@@ -200,86 +211,50 @@ export default function MapScreen() {
         popupAnchor: [0, -ICON_H],
       });
 
-      // ---------------------------
-      // Pins rendering
-      // payload = { myPins: [], communityPins: [] }
-      // ---------------------------
       window._setPins = function (payload) {
-        try {
-          const myPins = Array.isArray(payload?.myPins) ? payload.myPins : [];
-          const communityPins = Array.isArray(payload?.communityPins) ? payload.communityPins : [];
+        const myPins = Array.isArray(payload?.myPins) ? payload.myPins : [];
+        const communityPins = Array.isArray(payload?.communityPins) ? payload.communityPins : [];
 
-          pinLayer.clearLayers();
-          communityLayer.clearLayers();
+        pinLayer.clearLayers();
+        communityLayer.clearLayers();
 
-          const bounds = [];
+        const bounds = [];
 
-          // Render My Pins
-          myPins.forEach(function (p) {
-            if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
+        myPins.forEach(function (p) {
+          if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
+          const name = p.commonName || p.scientificName || "Pinned plant";
+          const sci = p.scientificName || "";
+          const html = "<strong>" + name + "</strong><br/><small>" + sci + "</small>";
 
-            const name = p.commonName || p.scientificName || "Pinned plant";
-            const sci = p.scientificName || "";
-            const html =
-              "<strong>" + name + "</strong><br/><small>" + sci + "</small>";
+          L.marker([p.lat, p.lng], { icon: myPinIcon })
+            .addTo(pinLayer)
+            .bindPopup(html);
 
-            L.marker([p.lat, p.lng], { icon: myPinIcon })
-              .addTo(pinLayer)
-              .bindPopup(html);
+          bounds.push([p.lat, p.lng]);
+        });
 
-            bounds.push([p.lat, p.lng]);
-          });
+        communityPins.forEach(function (p) {
+          if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
+          const name = p.commonName || p.scientificName || "Community plant";
+          const sci = p.scientificName || "";
+          const html = "<strong>" + name + "</strong><br/><small>" + sci + "</small>";
 
-          // Render Community Pins
-          communityPins.forEach(function (p) {
-            if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
+          L.marker([p.lat, p.lng], { icon: communityPinIcon })
+            .addTo(communityLayer)
+            .bindPopup(html);
 
-            const name = p.commonName || p.scientificName || "Community plant";
-            const sci = p.scientificName || "";
-            const html =
-              "<strong>" + name + "</strong><br/><small>" + sci + "</small>";
+          bounds.push([p.lat, p.lng]);
+        });
 
-            L.marker([p.lat, p.lng], { icon: communityPinIcon })
-              .addTo(communityLayer)
-              .bindPopup(html);
-
-            bounds.push([p.lat, p.lng]);
-          });
-
-          // Fit map to all pins if we have any
-          if (bounds.length) {
-            try {
-              map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
-            } catch (e) {}
-          }
-
-          // Tell RN that pins rendered
-          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({
-                type: "pins_rendered",
-                myCount: pinLayer.getLayers().length,
-                communityCount: communityLayer.getLayers().length
-              })
-            );
-          }
-        } catch (e) {
-          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({ type: "pins_error", error: String(e) })
-            );
-          }
+        if (bounds.length) {
+          try { map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 }); } catch (e) {}
         }
       };
 
-      // ---------------------------
-      // User location marker (My Location pin)
-      // ---------------------------
       let userMarker = null;
 
       function setUserLocation(lat, lng) {
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
         if (userMarker) userMarker.remove();
 
         userMarker = L.marker([lat, lng], { icon: myLocationIcon })
@@ -287,25 +262,14 @@ export default function MapScreen() {
           .bindPopup("<strong>My Location</strong>");
       }
 
-      // Recenter button
       document.getElementById("recenter").onclick = function () {
-        if (userMarker) {
-          map.setView(userMarker.getLatLng(), 15, { animate: true });
-        }
-        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-          window.ReactNativeWebView.postMessage(
-            JSON.stringify({ type: "recenter_tapped" })
-          );
-        }
+        if (userMarker) map.setView(userMarker.getLatLng(), 15, { animate: true });
       };
 
-      // Receive messages from React Native
       function onMsg(e) {
         try {
           const msg = JSON.parse(e.data);
-          if (msg.type === "user_location") {
-            setUserLocation(msg.payload.lat, msg.payload.lng);
-          }
+          if (msg.type === "user_location") setUserLocation(msg.payload.lat, msg.payload.lng);
         } catch (_) {}
       }
 
@@ -317,50 +281,137 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <WebView
-        ref={webRef}
-        originWhitelist={["*"]}
-        javaScriptEnabled
-        domStorageEnabled
-        onLoadEnd={onWebViewLoad}
-        source={{ html: leafletHTML(coords, topOffset) }}
+      <View style={[styles.screenInner, { paddingTop: (insets.top || 0) + 8 }]}>
+        {/* MAP FRAME */}
+        <View style={[styles.mapFrame, { height: MAP_FRAME_HEIGHT }]}>
+          <WebView
+            ref={webRef}
+            originWhitelist={["*"]}
+            javaScriptEnabled
+            domStorageEnabled
+            onLoadEnd={onWebViewLoad}
+            source={{ html: leafletHTML(coords, topOffset) }}
+            allowFileAccess
+            allowFileAccessFromFileURLs
+            allowUniversalAccessFromFileURLs
+          />
+        </View>
 
-        allowFileAccess
-        allowFileAccessFromFileURLs
-        allowUniversalAccessFromFileURLs
+        <View style={{ flex: 1 }} />
+      </View>
 
-        onMessage={(e) => {
-          try {
-            const m = JSON.parse(e.nativeEvent.data);
-
-            if (m.type === "pins_rendered") {
-              console.log("Leaflet rendered pins:", {
-                myPins: m.myCount,
-                communityPins: m.communityCount,
-              });
-            }
-
-            if (m.type === "pins_error") {
-              console.log("Leaflet pin error:", m.error);
-            }
-          } catch {}
-        }}
-      />
-
-      {/* Back button */}
+      {/* BOTTOM BAR: Back Button + Legend */}
       <View
-        style={{
-          position: "absolute",
-          bottom: 70,
-          left: 28,
-        }}
+        style={[
+          styles.bottomBar,
+          { paddingBottom: Math.max(insets.bottom || 0, 10) },
+        ]}
       >
-        <BackButton />
+        <View style={styles.backSlot}>
+          <BackButton />
+        </View>
+
+        <View style={styles.legendCard}>
+          <Text style={styles.legendTitle}>Legend</Text>
+
+          <View style={styles.legendRowWrap}>
+            <View style={styles.legendItemFixed}>
+              <Image source={MyPinIcon} style={styles.legendIcon} />
+              <Text style={styles.legendText}>My Pins</Text>
+            </View>
+
+            <View style={styles.legendItemFixed}>
+              <Image source={CommunityPinIcon} style={styles.legendIcon} />
+              <Text style={styles.legendText}>Community</Text>
+            </View>
+
+            <View style={styles.legendItemFixed}>
+              <Image source={MyLocationPinIcon} style={styles.legendIcon} />
+              <Text style={styles.legendText}>My Location</Text>
+            </View>
+          </View>
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, marginTop: Platform.OS === "android" ? 25 : 0 },
+  container: {
+    flex: 1,
+    marginTop: Platform.OS === "android" ? 25 : 0,
+    backgroundColor: "#4c6233",
+  },
+
+  screenInner: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+
+  mapFrame: {
+    width: "100%",
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "#c9e4ca",
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
+  },
+
+  bottomBar: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 12,
+  },
+
+  backSlot: {
+    width: 64, 
+    alignItems: "flex-start",
+    justifyContent: "flex-end",
+  },
+
+  legendCard: {
+    flex: 1,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "#c9e4ca",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
+  },
+
+  legendTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+
+  legendRowWrap: {
+  flexDirection: "row",
+  flexWrap: "wrap",          
+  alignItems: "center",
+  gap: 12,
+  },
+
+  legendItemFixed: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 8,
+  minWidth: "48%",           
+  },
+
+  legendIcon: {
+    width: 22,
+    height: 22,
+    resizeMode: "contain",
+  },
+
+  legendText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
 });

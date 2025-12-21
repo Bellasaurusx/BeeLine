@@ -100,7 +100,7 @@ async function identifyWithPlantNet(imageAsset) {
   suggestions.sort((a, b) => b.score - a.score);
 
   const top = suggestions[0];
-  const lowConfidence = !top || top.score < 0.3;
+  const lowConfidence = !top || top.score < 0.1;
 
   console.log(
     "🌿 PlantNet suggestions:",
