@@ -20,6 +20,8 @@ export default function Splash() {
   useEffect(() => {
     (async () => {
       try {
+        await AsyncStorage.removeItem(ONBOARD_KEY);
+        
         const seen = await AsyncStorage.getItem(ONBOARD_KEY);
         if (!seen) {
           // First time user → onboarding
