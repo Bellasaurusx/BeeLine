@@ -8,11 +8,15 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
-// 👇 change this to whatever your profile image file is
 import ProfilePic from "../assets/profile.jpg";
 
 export default function Profile() {
   const router = useRouter();
+
+  const handleLeftHandMode = () => {
+    console.log("Left hand mode pressed");
+    // later: toggle setting, AsyncStorage, context, etc.
+  };
 
   return (
     <View style={styles.container}>
@@ -26,15 +30,15 @@ export default function Profile() {
 
       {/* Options List */}
       <View style={styles.options}>
-        <Option label="Left hand mode" />
-        <Option label="Location" />
-        <Option label="Disable account" />
-        <Option label="View Data" />
-        <Option label="Change password" />
-        <Option label="Change Email" />
+        <Option label="Left hand mode" onPress={handleLeftHandMode} />
+        <Option label="Location" onPress={() => console.log("Location")} />
+        <Option label="Disable account" onPress={() => console.log("Disable")} />
+        <Option label="View Data" onPress={() => console.log("View Data")} />
+        <Option label="Change password" onPress={() => console.log("Password")} />
+        <Option label="Change Email" onPress={() => console.log("Email")} />
       </View>
 
-      {/* Back Button (bottom-right) */}
+      {/* Back Button */}
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => router.push("/home")}
@@ -45,19 +49,21 @@ export default function Profile() {
   );
 }
 
-function Option({ label }) {
+function Option({ label, onPress }) {
   return (
-    <View style={styles.optionRow}>
-      <View style={styles.bullet} />
-      <Text style={styles.optionText}>{label}</Text>
-    </View>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.optionRow}>
+        <View style={styles.bullet} />
+        <Text style={styles.optionText}>{label}</Text>
+      </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#4c6233", // green background
+    backgroundColor: "#4c6233",
     paddingTop: 60,
     paddingHorizontal: 40,
   },

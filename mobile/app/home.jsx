@@ -9,8 +9,9 @@ import { getUnread } from "../src/utils/notificationsStore";
 import MapIcon from "../assets/mapicon.png";
 import CamIcon from "../assets/cameraicon.png";
 import GalleryIcon from "../assets/galleryicon.png";
+import SettingsIcon from "../assets/settingsicon.png";
 import HomeIcon from "../assets/homeicon.png";
-import Img1 from "../assets/flower1.jpg";
+import Img1 from "../assets/flower1.png";
 import Img2 from "../assets/flower2.jpg";
 import BellIcon from "../assets/bell-icon.png";
 
@@ -123,26 +124,6 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
-      {/* Top Header */}
-      <View style={styles.topHeader}>
-        {/* Settings */}
-        <View style={styles.headerLeft}>
-          <Link href="/profile" asChild>
-            <TouchableOpacity>
-              <Text style={styles.headerItem}>⚙️ Settings</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-
-        {/* Notifications */}
-        <TouchableOpacity
-          onPress={() => router.push("/notifications")}
-          style={styles.bellWrap}
-        >
-          <Text style={styles.bell}>🔔</Text>
-          {hasUnread && <View style={styles.redDot} />}
-        </TouchableOpacity>
-      </View>
 
       {/* Daily Tip */}
       <View style={styles.factBox}>
@@ -195,9 +176,9 @@ export default function Home() {
 
         <TouchableOpacity
           style={styles.iconBtn}
-          onPress={() => router.push("/home")}
+          onPress={() => router.push("/profile")}
         >
-          <Image source={HomeIcon} style={styles.iconImg} />
+          <Image source={SettingsIcon} style={styles.iconImg} />
         </TouchableOpacity>
       </View>
 
@@ -217,7 +198,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#4c6233", // BeeLine green
-    paddingTop: 40,
+    paddingTop: 170,
     paddingHorizontal: 20,
   },
 
