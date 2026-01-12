@@ -1,16 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import {
-  View,
-  StyleSheet,
-  Platform,
-  Image,
-  Text,
-  Dimensions,
-} from "react-native";
+import { View, StyleSheet, Platform, Image, Text, Dimensions } from "react-native";
 import WebView from "react-native-webview";
 import * as Location from "expo-location";
-import BackButton from "../../app/components/BackButton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import BackButton from "../../app/components/BackButton";
 
 import MyPinIcon from "../../assets/my-pin.png";
 import CommunityPinIcon from "../../assets/community-pin.png";
@@ -53,12 +47,6 @@ export default function MapScreen() {
         const url = `${process.env.EXPO_PUBLIC_API_URL}/api/observations`;
         const res = await fetch(url);
         const data = await res.json();
-
-        console.log(
-          "Fetched observations:",
-          Array.isArray(data) ? data.length : "not array"
-        );
-
         setPins(Array.isArray(data) ? data : []);
       } catch (e) {
         console.log("Pin fetch error:", e);
@@ -85,35 +73,22 @@ export default function MapScreen() {
   const onWebViewLoad = () => setReady(true);
 
   const topOffset = Math.round((insets.top || 0) + 12);
-
   const { height: screenH } = Dimensions.get("window");
   const MAP_FRAME_HEIGHT = Math.min(600, Math.round(screenH * 0.7));
 
-  // Leaflet HTML
   const leafletHTML = (initial, offsetTopPx) => `<!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
-
     <style>
       :root { --safeTop: ${offsetTopPx}px; }
       html,body,#map{height:100%;margin:0}
-      .leaflet-top {
-        top: calc(var(--safeTop) + 1px) !important;
-      }
-
-      .leaflet-left {
-        left: 1px !important;
-      }
-
-      .leaflet-right {
-        right: 1px !important;
-      }
-
+      .leaflet-top { top: calc(var(--safeTop) + 1px) !important; }
+      .leaflet-left { left: 1px !important; }
+      .leaflet-right { right: 1px !important; }
       .leaflet-control-layers{
         box-shadow:0 2px 6px rgba(0,0,0,0.15);
         background:#f9b233;
@@ -121,13 +96,11 @@ export default function MapScreen() {
         padding: 6px 8px;
         font-size: 14px;
       }
-
       .leaflet-control-layers-toggle{
         width: 34px !important;
         height: 34px !important;
         background-size: 18px 18px !important;
       }
-
       .recenter-btn{
         position:absolute;
         z-index:1000;
@@ -142,8 +115,6 @@ export default function MapScreen() {
         box-shadow:0 2px 6px rgba(0,0,0,0.2);
         user-select:none;
       }
-
-
       .leaflet-control-zoom a {
         width: 32px;
         height: 32px;
@@ -158,7 +129,6 @@ export default function MapScreen() {
     <div class="recenter-btn" id="recenter">My Location</div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
     <script>
@@ -209,26 +179,9 @@ export default function MapScreen() {
       const ICON_W = 42;
       const ICON_H = 42;
 
-      const myPinIcon = L.icon({
-        iconUrl: MY_PIN_URL,
-        iconSize: [ICON_W, ICON_H],
-        iconAnchor: [ICON_W / 2, ICON_H],
-        popupAnchor: [0, -ICON_H],
-      });
-
-      const communityPinIcon = L.icon({
-        iconUrl: COMMUNITY_PIN_URL,
-        iconSize: [ICON_W, ICON_H],
-        iconAnchor: [ICON_W / 2, ICON_H],
-        popupAnchor: [0, -ICON_H],
-      });
-
-      const myLocationIcon = L.icon({
-        iconUrl: MY_LOCATION_URL,
-        iconSize: [ICON_W, ICON_H],
-        iconAnchor: [ICON_W / 2, ICON_H],
-        popupAnchor: [0, -ICON_H],
-      });
+      const myPinIcon = L.icon({ iconUrl: MY_PIN_URL, iconSize: [ICON_W, ICON_H], iconAnchor: [ICON_W/2, ICON_H] });
+      const communityPinIcon = L.icon({ iconUrl: COMMUNITY_PIN_URL, iconSize: [ICON_W, ICON_H], iconAnchor: [ICON_W/2, ICON_H] });
+      const myLocationIcon = L.icon({ iconUrl: MY_LOCATION_URL, iconSize: [ICON_W, ICON_H], iconAnchor: [ICON_W/2, ICON_H] });
 
       window._setPins = function (payload) {
         const myPins = Array.isArray(payload?.myPins) ? payload.myPins : [];
@@ -244,11 +197,7 @@ export default function MapScreen() {
           const name = p.commonName || p.scientificName || "Pinned plant";
           const sci = p.scientificName || "";
           const html = "<strong>" + name + "</strong><br/><small>" + sci + "</small>";
-
-          L.marker([p.lat, p.lng], { icon: myPinIcon })
-            .addTo(pinLayer)
-            .bindPopup(html);
-
+          L.marker([p.lat, p.lng], { icon: myPinIcon }).addTo(pinLayer).bindPopup(html);
           bounds.push([p.lat, p.lng]);
         });
 
@@ -257,11 +206,7 @@ export default function MapScreen() {
           const name = p.commonName || p.scientificName || "Community plant";
           const sci = p.scientificName || "";
           const html = "<strong>" + name + "</strong><br/><small>" + sci + "</small>";
-
-          L.marker([p.lat, p.lng], { icon: communityPinIcon })
-            .addTo(communityLayer)
-            .bindPopup(html);
-
+          L.marker([p.lat, p.lng], { icon: communityPinIcon }).addTo(communityLayer).bindPopup(html);
           bounds.push([p.lat, p.lng]);
         });
 
@@ -275,10 +220,7 @@ export default function MapScreen() {
       function setUserLocation(lat, lng) {
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
         if (userMarker) userMarker.remove();
-
-        userMarker = L.marker([lat, lng], { icon: myLocationIcon })
-          .addTo(map)
-          .bindPopup("<strong>My Location</strong>");
+        userMarker = L.marker([lat, lng], { icon: myLocationIcon }).addTo(map).bindPopup("<strong>My Location</strong>");
       }
 
       document.getElementById("recenter").onclick = function () {
@@ -301,7 +243,6 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.screenInner, { paddingTop: (insets.top || 0) + 8 }]}>
-        {/* MAP FRAME */}
         <View style={[styles.mapFrame, { height: MAP_FRAME_HEIGHT }]}>
           <WebView
             ref={webRef}
@@ -319,7 +260,6 @@ export default function MapScreen() {
         <View style={{ flex: 1 }} />
       </View>
 
-      {/* BOTTOM BAR: Back Button + Legend */}
       <View
         style={[
           styles.bottomBar,
@@ -361,12 +301,10 @@ const styles = StyleSheet.create({
     marginTop: Platform.OS === "android" ? 25 : 0,
     backgroundColor: "#4c6233",
   },
-
   screenInner: {
     flex: 1,
     paddingHorizontal: 16,
   },
-
   mapFrame: {
     width: "100%",
     borderRadius: 18,
@@ -375,7 +313,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "#FFFFFF",
   },
-
   bottomBar: {
     position: "absolute",
     left: 16,
@@ -385,13 +322,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: 12,
   },
-
   backSlot: {
-    width: 64, 
+    width: 64,
     alignItems: "flex-start",
     justifyContent: "flex-end",
   },
-
   legendCard: {
     flex: 1,
     borderRadius: 18,
@@ -402,33 +337,28 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
   },
-
   legendTitle: {
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 10,
   },
-
   legendRowWrap: {
-  flexDirection: "row",
-  flexWrap: "wrap",          
-  alignItems: "center",
-  gap: 12,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 12,
   },
-
   legendItemFixed: {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 8,
-  minWidth: "48%",           
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    minWidth: "48%",
   },
-
   legendIcon: {
     width: 22,
     height: 22,
     resizeMode: "contain",
   },
-
   legendText: {
     fontSize: 14,
     fontWeight: "600",

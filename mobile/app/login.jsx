@@ -1,93 +1,47 @@
-import { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  Alert,
-} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { signInWithEmailAndPassword } from "firebase/auth";
-
-import { auth } from "../FirebaseConfig";
-import Logo from "../assets/Logo.png";
+import Logo from "../assets/Logo.png"; // your BeeLine logo
 
 export default function Login() {
   const router = useRouter();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Missing fields", "Please enter email and password.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.replace("/home"); // ✅ prevents back-nav to login
-    } catch (err) {
-      Alert.alert("Login failed", err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <View style={styles.container}>
       {/* Logo */}
       <Image source={Logo} style={styles.logo} />
 
-      {/* Google (later) */}
-      <TouchableOpacity style={styles.socialBtn} disabled>
+      {/* Google Button (not functional) */}
+      <TouchableOpacity style={styles.socialBtn}>
         <Text style={styles.socialText}>Log in With Google</Text>
       </TouchableOpacity>
 
-      {/* Apple (later) */}
-      <TouchableOpacity style={styles.socialBtn} disabled>
+      {/* Apple Button (not functional) */}
+      <TouchableOpacity style={styles.socialBtn}>
         <Text style={styles.socialText}>Log in With Apple</Text>
       </TouchableOpacity>
 
-      <Text style={styles.or}>— or —</Text>
+      <Text style={styles.or}>-- or --</Text>
 
-      {/* Email */}
-      <TextInput
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        style={styles.input}
-        placeholderTextColor="#333"
-      />
+      {/* Email Input */}
+      <TextInput placeholder="Email:" style={styles.input} placeholderTextColor="#333" />
 
-      {/* Password */}
+      {/* Password Input */}
       <TextInput
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
+        placeholder="Password:"
         secureTextEntry
         style={styles.input}
         placeholderTextColor="#333"
       />
 
-      {/* Login */}
+      {/* Working */}
       <TouchableOpacity
         style={styles.loginBtn}
-        onPress={handleLogin}
-        disabled={loading}
+        onPress={() => router.push("/home")} // ← WORKS!
       >
-        <Text style={styles.loginText}>
-          {loading ? "Logging in..." : "Log in"}
-        </Text>
+        <Text style={styles.loginText}>Log in</Text>
       </TouchableOpacity>
 
-      {/* Create account */}
+      {/* Working */}
       <TouchableOpacity
         style={styles.createBtn}
         onPress={() => router.push("/signup")}
@@ -101,7 +55,7 @@ export default function Login() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#4c6233",
+    backgroundColor: "#4c6233", // green background like mockup
     alignItems: "center",
     paddingTop: 60,
   },
@@ -118,7 +72,6 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     marginBottom: 15,
     alignItems: "center",
-    opacity: 0.6,
   },
   socialText: {
     fontWeight: "600",
