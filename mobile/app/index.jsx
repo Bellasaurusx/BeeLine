@@ -1,42 +1,22 @@
 // app/index.jsx
-import React, { useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ImageBackground,
-  TouchableOpacity,
-} from "react-native";
+import React from "react";
+import { View, Text, StyleSheet, ImageBackground, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import Bkg from "../assets/bkg.png";
 
-const ONBOARD_KEY = "beeline:onboardingSeen:v1";
+const KEY = "beeline:onboardingSeen:v1";
 
 export default function Splash() {
   const router = useRouter();
 
-  useEffect(() => {
-    (async () => {
-      try {
-        await AsyncStorage.removeItem(ONBOARD_KEY);
-        
-        const seen = await AsyncStorage.getItem(ONBOARD_KEY);
-        if (!seen) {
-          // First time user → onboarding
-          router.replace("/onboarding");
-        }
-      } catch (e) {
-        // If storage fails for any reason, don't block the user
-        console.warn("Onboarding check failed:", e);
-      }
-    })();
-  }, [router]);
+  const handleGetStarted = () => {
+  router.push("/onboarding");
+};
+
 
   return (
     <ImageBackground source={Bkg} style={styles.bg} resizeMode="cover">
-      {/* Title + tagline (moved lower now) */}
       <View style={styles.centerContent}>
         <Text style={styles.title}>Beeline</Text>
 
@@ -46,11 +26,7 @@ export default function Splash() {
         </Text>
       </View>
 
-      {/* Bigger button at bottom */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.push("/login")}
-      >
+      <TouchableOpacity style={styles.button} onPress={handleGetStarted}>
         <Text style={styles.buttonText}>Get Started</Text>
       </TouchableOpacity>
     </ImageBackground>
@@ -65,21 +41,17 @@ const styles = StyleSheet.create({
     paddingBottom: 70,
     paddingTop: 40,
   },
-
-  /* moved DOWN more (towards the vertical center) */
   centerContent: {
     marginTop: "99%",
     paddingHorizontal: 30,
     alignItems: "center",
   },
-
   title: {
     fontSize: 52,
     fontWeight: "700",
     color: "#fff",
     marginBottom: 10,
   },
-
   tagline: {
     fontSize: 18,
     color: "#fff",
@@ -88,7 +60,6 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     fontWeight: "400",
   },
-
   button: {
     backgroundColor: "#f4b400",
     paddingVertical: 18,
@@ -101,7 +72,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 6,
   },
-
   buttonText: {
     color: "#fff",
     fontWeight: "700",

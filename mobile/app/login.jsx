@@ -1,6 +1,6 @@
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import Logo from "../assets/Logo.png"; // your BeeLine logo
+import Logo from "../assets/HD_SPLASH_TRANS.png";
 
 export default function Login() {
   const router = useRouter();
@@ -36,7 +36,7 @@ export default function Login() {
       {/* Working */}
       <TouchableOpacity
         style={styles.loginBtn}
-        onPress={() => router.push("/home")} // ← WORKS!
+        onPress={() => router.push("/home")} 
       >
         <Text style={styles.loginText}>Log in</Text>
       </TouchableOpacity>
