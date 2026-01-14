@@ -2,17 +2,17 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { Link, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { useFocusEffect } from "@react-navigation/native";
 import { getUnread } from "../src/utils/notificationsStore";
+
+import { useLeftHand } from "./LeftHandContext";
 
 import MapIcon from "../assets/mapicon.png";
 import CamIcon from "../assets/cameraicon.png";
 import GalleryIcon from "../assets/galleryicon.png";
-import HomeIcon from "../assets/homeicon.png";
+
 import Img1 from "../assets/flower1.jpg";
 import Img2 from "../assets/flower2.jpg";
-import BellIcon from "../assets/bell-icon.png";
 
 // --- Daily Tip config ---
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -25,10 +25,9 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export default function Home() {
   const router = useRouter();
+  const { leftHandMode } = useLeftHand();
 
-    // --- Daily Fact state ---
-  const [dailyFact, setDailyFact] = useState("Loading today's fact...");
-
+  const [dailyFact, setDailyFact] = useState("Loading today's tip...");
   const [hasUnread, setHasUnread] = useState(false);
 
   useFocusEffect(
@@ -50,26 +49,32 @@ export default function Home() {
     }, [])
   );
 
-  // --- Load daily fact from DB tips (cached, changes once/day) ---
+  // --- Load daily tip from DB tips (cached, changes once/day) ---
   useEffect(() => {
     let cancelled = false;
 
     async function loadDailyFact() {
       try {
-        const today = new Date().toISOString().slice(0, 10); 
+        const today = new Date().toISOString().slice(0, 10);
 
-        const [cachedJson, fetchedAtStr, savedId, savedDate] = await Promise.all([
-          AsyncStorage.getItem(TIPS_KEY),
-          AsyncStorage.getItem(TIPS_FETCHED_AT_KEY),
-          AsyncStorage.getItem(TIP_OF_DAY_ID_KEY),
-          AsyncStorage.getItem(TIP_OF_DAY_DATE_KEY),
-        ]);
+        const [cachedJson, fetchedAtStr, savedId, savedDate] =
+          await Promise.all([
+            AsyncStorage.getItem(TIPS_KEY),
+            AsyncStorage.getItem(TIPS_FETCHED_AT_KEY),
+            AsyncStorage.getItem(TIP_OF_DAY_ID_KEY),
+            AsyncStorage.getItem(TIP_OF_DAY_DATE_KEY),
+          ]);
 
         let tips = cachedJson ? JSON.parse(cachedJson) : [];
         const fetchedAt = fetchedAtStr ? Number(fetchedAtStr) : 0;
         const isFresh = fetchedAt && Date.now() - fetchedAt < ONE_DAY_MS;
 
-        if (savedId && savedDate === today && Array.isArray(tips) && tips.length) {
+        if (
+          savedId &&
+          savedDate === today &&
+          Array.isArray(tips) &&
+          tips.length
+        ) {
           const found = tips.find((t) => String(t.id) === String(savedId));
           if (found && !cancelled) {
             setDailyFact(found.tip || found.insight || "Check out today's tip.");
@@ -110,7 +115,7 @@ export default function Home() {
           setDailyFact(chosen.tip || chosen.insight || "Check out today's tip.");
         }
       } catch (e) {
-        console.log("Daily fact error:", e);
+        console.log("Daily tip error:", e);
         if (!cancelled) setDailyFact("Bees fly about 20 mph.");
       }
     }
@@ -167,12 +172,16 @@ export default function Home() {
           <Image source={Img2} style={styles.tileImage} />
           <Text style={styles.tileLabel}>Wellness</Text>
         </TouchableOpacity>
-
       </View>
 
-      {/* Right Sidebar Buttons */}
-      <View style={styles.sidebar}>
-        <TouchableOpacity 
+      {/* Sidebar Buttons (moves left/right based on Left Hand Mode) */}
+      <View
+        style={[
+          styles.sidebar,
+          leftHandMode ? styles.sidebarLeft : styles.sidebarRight,
+        ]}
+      >
+        <TouchableOpacity
           style={styles.iconBtn}
           onPress={() => router.push("/maps")}
         >
@@ -181,26 +190,18 @@ export default function Home() {
 
         <TouchableOpacity
           style={styles.iconBtn}
-          onPress={() => router.push("/camera")}
+          onPress={() => router.push("/compvis")}
         >
           <Image source={CamIcon} style={styles.iconImg} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.iconBtn}
-          onPress={() => router.push("/collection")}
+          onPress={() => router.push("/photogal")}
         >
           <Image source={GalleryIcon} style={styles.iconImg} />
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => router.push("/home")}
-        >
-          <Image source={HomeIcon} style={styles.iconImg} />
-        </TouchableOpacity>
       </View>
-
 
       {/* Back Button */}
       <TouchableOpacity
@@ -216,24 +217,9 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#4c6233", // BeeLine green
+    backgroundColor: "#4c6233",
     paddingTop: 40,
     paddingHorizontal: 20,
-  },
-
-  iconBtn: {
-    backgroundColor: "#5C4033",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  iconImg: {
-    width: 28,
-    height: 28,
-    resizeMode: "contain",
   },
 
   /* HEADER */
@@ -243,19 +229,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 6,
     marginBottom: 25,
-
     flexDirection: "row",
     alignItems: "center",
   },
 
   headerLeft: {
-    flex: 1,            
+    flex: 1,
   },
 
   headerItem: {
     color: "#fff",
     fontSize: 18,
-    marginBottom: 0,      
   },
 
   bellWrap: {
@@ -266,7 +250,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: "#fff",
   },
-  /* Notification Dot */
+
   redDot: {
     position: "absolute",
     top: -2,
@@ -288,11 +272,13 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 25,
   },
+
   factText: {
     fontSize: 16,
     fontWeight: "700",
     textAlign: "center",
   },
+
   factSub: {
     textAlign: "center",
     marginTop: 4,
@@ -303,9 +289,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 25,
   },
+
   tileWrapper: {
     alignItems: "center",
   },
+
   tileImage: {
     width: 200,
     height: 150,
@@ -313,6 +301,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "#7fa96b",
   },
+
   tileLabel: {
     color: "#fff",
     marginTop: 6,
@@ -322,10 +311,18 @@ const styles = StyleSheet.create({
   /* SIDEBAR ICONS */
   sidebar: {
     position: "absolute",
-    right: 20,
     bottom: 100,
     gap: 16,
   },
+
+  sidebarRight: {
+    right: 20,
+  },
+
+  sidebarLeft: {
+    left: 20,
+  },
+
   iconBtn: {
     backgroundColor: "#F4EBD0",
     width: 50,
@@ -334,8 +331,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  icon: {
-    fontSize: 22,
+
+  iconImg: {
+    width: 28,
+    height: 28,
+    resizeMode: "contain",
   },
 
   /* BACK BUTTON */
@@ -355,6 +355,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+
   backArrow: {
     fontSize: 26,
     color: "#333",

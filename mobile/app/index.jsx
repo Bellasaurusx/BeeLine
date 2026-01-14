@@ -14,21 +14,26 @@ import Bkg from "../assets/bkg.png";
 
 const ONBOARD_KEY = "beeline:onboardingSeen:v1";
 
+// ✅ TESTING MODE: force onboarding every app launch
+const FORCE_ONBOARDING_FOR_TESTING = true;
+
 export default function Splash() {
   const router = useRouter();
 
   useEffect(() => {
     (async () => {
       try {
-        await AsyncStorage.removeItem(ONBOARD_KEY);
-        
+        if (FORCE_ONBOARDING_FOR_TESTING) {
+          await AsyncStorage.removeItem(ONBOARD_KEY);
+          router.replace("/onboarding");
+          return;
+        }
+
         const seen = await AsyncStorage.getItem(ONBOARD_KEY);
-        if (!seen) {
-          // First time user → onboarding
+        if (seen !== "true") {
           router.replace("/onboarding");
         }
       } catch (e) {
-        // If storage fails for any reason, don't block the user
         console.warn("Onboarding check failed:", e);
       }
     })();
@@ -36,7 +41,6 @@ export default function Splash() {
 
   return (
     <ImageBackground source={Bkg} style={styles.bg} resizeMode="cover">
-      {/* Title + tagline (moved lower now) */}
       <View style={styles.centerContent}>
         <Text style={styles.title}>Beeline</Text>
 
@@ -46,7 +50,6 @@ export default function Splash() {
         </Text>
       </View>
 
-      {/* Bigger button at bottom */}
       <TouchableOpacity
         style={styles.button}
         onPress={() => router.push("/login")}
@@ -66,7 +69,6 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
 
-  /* moved DOWN more (towards the vertical center) */
   centerContent: {
     marginTop: "99%",
     paddingHorizontal: 30,
