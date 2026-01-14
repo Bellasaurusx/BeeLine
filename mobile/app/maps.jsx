@@ -1,13 +1,14 @@
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import React from "react";
+import { View, StyleSheet, TouchableOpacity, Text } from "react-native";
 import { useRouter } from "expo-router";
+import MapScreen from "../src/screens/MapScreen";
 
-const Contact = () => {
+export default function MapsPage() {
   const router = useRouter();
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Maps</Text>
+      <MapScreen />
 
       {/* BeeLine Back Button */}
       <TouchableOpacity
@@ -18,23 +19,11 @@ const Contact = () => {
       </TouchableOpacity>
     </View>
   );
-};
-
-export default Contact;
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#4c6233", // BeeLine green
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  title: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 28,
-    marginBottom: 20,
   },
 
   /* BeeLine Back Button */
@@ -48,7 +37,6 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-
     shadowColor: "#000",
     shadowOffset: { width: 2, height: 3 },
     shadowOpacity: 0.3,

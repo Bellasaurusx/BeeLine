@@ -38,7 +38,8 @@
       "expo-location"
     ],
     "extra": {
-      "EXPO_PUBLIC_API_URL": "${EXPO_PUBLIC_API_URL}"
+      "EXPO_PUBLIC_API_URL": "${EXPO_PUBLIC_API_URL}",
+      "PLANTNET_API_KEY": "${PLANTNET_API_KEY}"
     }
   }
 }

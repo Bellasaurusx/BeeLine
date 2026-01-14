@@ -138,3 +138,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 mobile/app.json
+
+# Allow BeeLine mobile assets
+!mobile/assets/
+!mobile/assets/*.png

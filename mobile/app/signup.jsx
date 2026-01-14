@@ -12,7 +12,7 @@ import {
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 
-import { auth } from "../FirebaseConfig"; // ✅ adjust path if needed
+import { auth } from "../FirebaseConfig";
 import Logo from "../assets/Logo.png";
 
 export default function SignUp() {
@@ -49,14 +49,12 @@ export default function SignUp() {
         password
       );
 
-      // ✅ Set display name in Firebase Auth profile
-      await updateProfile(userCred.user, {
-        displayName: name.trim(),
-      });
+      // Set display name in Firebase Auth profile
+      await updateProfile(userCred.user, { displayName: name.trim() });
 
       router.replace("/home");
     } catch (err) {
-      Alert.alert("Sign up failed", err.message);
+      Alert.alert("Sign up failed", err?.message || "Please try again.");
     } finally {
       setLoading(false);
     }
@@ -106,7 +104,7 @@ export default function SignUp() {
       />
 
       <TouchableOpacity
-        style={styles.signupBtn}
+        style={[styles.signupBtn, loading && styles.btnDisabled]}
         onPress={handleSignUp}
         disabled={loading}
       >
@@ -119,6 +117,7 @@ export default function SignUp() {
       <TouchableOpacity
         style={styles.loginLink}
         onPress={() => router.push("/login")}
+        disabled={loading}
       >
         <Text style={styles.loginLinkText}>Already have an account? Log in</Text>
       </TouchableOpacity>
@@ -127,6 +126,7 @@ export default function SignUp() {
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => router.push("/login")}
+        disabled={loading}
       >
         <Text style={styles.backArrow}>←</Text>
       </TouchableOpacity>
@@ -171,6 +171,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginTop: 10,
   },
+  btnDisabled: {
+    opacity: 0.6,
+  },
   signupText: {
     fontWeight: "600",
     color: "#000",
@@ -182,6 +185,8 @@ const styles = StyleSheet.create({
     color: "#f4cf65",
     fontSize: 14,
   },
+
+  /* Back Button / BeeLine style */
   backButton: {
     position: "absolute",
     bottom: 40,

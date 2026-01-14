@@ -16,13 +16,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, useRouter } from "expo-router";
 import { useLeftHand } from "./LeftHandContext";
 
-
 const PLANTNET_API_KEY = "2b10BuvkFTkWr8yTFdYCsSQC";
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
 const GALLERY_KEY = "@plant_gallery_uris";
 
 const toPercent = (p) => `${Math.round((p || 0) * 100)}%`;
-
 
 async function identifyWithPlantNet(imageAsset) {
   const form = new FormData();
@@ -85,7 +83,7 @@ async function enrichWithINat(scientificName) {
   };
 }
 
-//  helper to append a URI to gallery in AsyncStorage
+// helper to append a URI to gallery in AsyncStorage
 async function addToGallery(uri) {
   try {
     const existing = await AsyncStorage.getItem(GALLERY_KEY);
@@ -103,9 +101,8 @@ export default function IdentifyScreen() {
   const [results, setResults] = useState([]);
   const router = useRouter();
   const { leftHandMode } = useLeftHand();
-  
 
-
+  //  Upload from gallery 
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
@@ -133,7 +130,7 @@ export default function IdentifyScreen() {
     setResults([]);
   };
 
-  // 📷 Take a photo with camera (this IS added to gallery)
+  //  Take a photo with camera (this IS added to gallery)
   const handleCameraCapture = async () => {
     try {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -159,7 +156,7 @@ export default function IdentifyScreen() {
         return;
       }
 
-      // 💾 save this camera photo into gallery
+      //  save this camera photo into gallery
       await addToGallery(asset.uri);
 
       setImageAsset(asset);
@@ -170,7 +167,7 @@ export default function IdentifyScreen() {
     }
   };
 
-  // 🔍 Run identification (shared for upload + camera)
+  //  Run identification (shared for upload + camera)
   const identify = async () => {
     if (!imageAsset?.uri) {
       Alert.alert("No image", "Choose or take a photo first.");
@@ -340,12 +337,12 @@ export default function IdentifyScreen() {
 
       {/* BeeLine back button */}
       <TouchableOpacity
-          style={[
-            styles.backButton,
-            leftHandMode ? styles.leftButton : styles.rightButton,
-          ]}
-          onPress={() => router.push("/home")}
-        >
+        style={[
+          styles.backButton,
+          leftHandMode ? styles.leftButton : styles.rightButton,
+        ]}
+        onPress={() => router.push("/home")}
+      >
         <Text style={styles.backArrow}>←</Text>
       </TouchableOpacity>
     </View>
@@ -515,13 +512,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-    leftButton: {
+  leftButton: {
     left: 25,
   },
   rightButton: {
     right: 25,
   },
-
   backArrow: {
     fontSize: 24,
     color: "#333",

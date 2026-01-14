@@ -1,13 +1,32 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, StyleSheet, Platform } from "react-native";
-import { WebView } from "react-native-webview";
+import {
+  View,
+  StyleSheet,
+  Platform,
+  Image,
+  Text,
+  Dimensions,
+} from "react-native";
+import WebView from "react-native-webview";
 import * as Location from "expo-location";
+import BackButton from "../../app/components/BackButton";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import MyPinIcon from "../../assets/my-pin.png";
+import CommunityPinIcon from "../../assets/community-pin.png";
+import MyLocationPinIcon from "../../assets/location-pin.png";
 
 export default function MapScreen() {
+  const insets = useSafeAreaInsets();
   const webRef = useRef(null);
+
   const [ready, setReady] = useState(false);
   const [pins, setPins] = useState([]);
   const [coords, setCoords] = useState({ lat: 37.7749, lng: -122.4194 });
+
+  const myPinUri = Image.resolveAssetSource(MyPinIcon)?.uri;
+  const communityPinUri = Image.resolveAssetSource(CommunityPinIcon)?.uri;
+  const myLocationPinUri = Image.resolveAssetSource(MyLocationPinIcon)?.uri;
 
   useEffect(() => {
     (async () => {
@@ -17,6 +36,7 @@ export default function MapScreen() {
       const loc = await Location.getCurrentPositionAsync({});
       const lat = loc.coords.latitude;
       const lng = loc.coords.longitude;
+
       setCoords({ lat, lng });
 
       if (ready && webRef.current) {
@@ -33,11 +53,13 @@ export default function MapScreen() {
         const url = `${process.env.EXPO_PUBLIC_API_URL}/api/observations`;
         const res = await fetch(url);
         const data = await res.json();
+
         console.log(
           "Fetched observations:",
           Array.isArray(data) ? data.length : "not array"
         );
-        setPins(data);
+
+        setPins(Array.isArray(data) ? data : []);
       } catch (e) {
         console.log("Pin fetch error:", e);
       }
@@ -46,29 +68,88 @@ export default function MapScreen() {
 
   useEffect(() => {
     if (!ready || !webRef.current) return;
-    const js = `window._setPins(${JSON.stringify(pins)}); true;`;
+
+    const myPins = [];
+    const communityPins = [];
+
+    for (const p of pins) {
+      if (p?.imageUrl) myPins.push(p);
+      else communityPins.push(p);
+    }
+
+    const payload = { myPins, communityPins };
+    const js = `window._setPins(${JSON.stringify(payload)}); true;`;
     webRef.current.injectJavaScript(js);
   }, [ready, pins]);
 
   const onWebViewLoad = () => setReady(true);
 
-  const leafletHTML = (initial) => `<!DOCTYPE html>
+  const topOffset = Math.round((insets.top || 0) + 12);
+
+  const { height: screenH } = Dimensions.get("window");
+  const MAP_FRAME_HEIGHT = Math.min(600, Math.round(screenH * 0.7));
+
+  // Leaflet HTML
+  const leafletHTML = (initial, offsetTopPx) => `<!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+
     <style>
+      :root { --safeTop: ${offsetTopPx}px; }
       html,body,#map{height:100%;margin:0}
-      .leaflet-control-layers{box-shadow:0 2px 8px rgba(0,0,0,.15);border-radius:8px}
+      .leaflet-top {
+        top: calc(var(--safeTop) + 1px) !important;
+      }
+
+      .leaflet-left {
+        left: 1px !important;
+      }
+
+      .leaflet-right {
+        right: 1px !important;
+      }
+
+      .leaflet-control-layers{
+        box-shadow:0 2px 6px rgba(0,0,0,0.15);
+        background:#f9b233;
+        border-radius:10px;
+        padding: 6px 8px;
+        font-size: 14px;
+      }
+
+      .leaflet-control-layers-toggle{
+        width: 34px !important;
+        height: 34px !important;
+        background-size: 18px 18px !important;
+      }
+
       .recenter-btn{
         position:absolute;
         z-index:1000;
         right:12px;
-        top:12px;
-        background:#fff;
-        border-radius:6px;
+        top: calc(var(--safeTop) + 10px);
+        background:#f9b233;
+        border-radius:10px;
         padding:8px 10px;
-        box-shadow:0 2px 6px rgba(0,0,0,.2)
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        font-size:14px;
+        font-weight:600;
+        box-shadow:0 2px 6px rgba(0,0,0,0.2);
+        user-select:none;
+      }
+
+
+      .leaflet-control-zoom a {
+        width: 32px;
+        height: 32px;
+        line-height: 25px;
+        background:#f9b233;
+        font-size: 18px;
       }
     </style>
   </head>
@@ -77,6 +158,9 @@ export default function MapScreen() {
     <div class="recenter-btn" id="recenter">My Location</div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
     <script>
       const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -86,10 +170,6 @@ export default function MapScreen() {
         maxZoom: 19,
         attribution: '© OSM HOT'
       });
-      const toner = L.tileLayer('https://stamen-tiles.a.ssl.fastly.net/toner-lite/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© Stamen'
-      });
 
       const map = L.map('map', {
         center: [${initial.lat}, ${initial.lng}],
@@ -97,110 +177,118 @@ export default function MapScreen() {
         layers: [osm]
       });
 
-      const baseLayers = {
-        OSM: osm,
-        Humanitarian: hot,
-        "Toner Lite": toner
-      };
+      const baseLayers = { OSM: osm, Humanitarian: hot };
 
-      // One layer for future "My Pins", one for community overlay
-      const pinLayer = L.layerGroup().addTo(map);
-      const communityLayer = L.layerGroup().addTo(map);
+      const pinLayer = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        maxClusterRadius: 40,
+      });
+
+      const communityLayer = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        maxClusterRadius: 40,
+      });
+
+      map.addLayer(pinLayer);
+      map.addLayer(communityLayer);
 
       L.control
         .layers(
           baseLayers,
-          {
-            "My Pins": pinLayer,
-            Community: communityLayer
-          },
-          { position: "topleft", collapsed: false }
+          { "My Pins": pinLayer, "Community": communityLayer },
+          { position: "topleft", collapsed: true }
         )
         .addTo(map);
 
-      // Called from React Native: window._setPins([...])
-      window._setPins = function (pins) {
-        try {
-          const data = Array.isArray(pins) ? pins : [];
-          communityLayer.clearLayers();
+      const MY_PIN_URL = ${JSON.stringify(myPinUri || "")};
+      const COMMUNITY_PIN_URL = ${JSON.stringify(communityPinUri || "")};
+      const MY_LOCATION_URL = ${JSON.stringify(myLocationPinUri || "")};
 
-          const bounds = [];
-          data.forEach(function (p) {
-            if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
+      const ICON_W = 42;
+      const ICON_H = 42;
 
-            var name = p.commonName || p.scientificName || "Observation";
-            var sci = p.scientificName || "";
-            var html =
-              "<strong>" +
-              name +
-              "</strong><br/><small>" +
-              sci +
-              "</small>";
+      const myPinIcon = L.icon({
+        iconUrl: MY_PIN_URL,
+        iconSize: [ICON_W, ICON_H],
+        iconAnchor: [ICON_W / 2, ICON_H],
+        popupAnchor: [0, -ICON_H],
+      });
 
-            L.circleMarker([p.lat, p.lng], {
-              radius: 8,
-              weight: 2,
-              color: "#1e90ff",
-              fillColor: "#1e90ff",
-              fillOpacity: 0.85
-            })
-              .addTo(communityLayer)
-              .bindPopup(html);
+      const communityPinIcon = L.icon({
+        iconUrl: COMMUNITY_PIN_URL,
+        iconSize: [ICON_W, ICON_H],
+        iconAnchor: [ICON_W / 2, ICON_H],
+        popupAnchor: [0, -ICON_H],
+      });
 
-            bounds.push([p.lat, p.lng]);
-          });
+      const myLocationIcon = L.icon({
+        iconUrl: MY_LOCATION_URL,
+        iconSize: [ICON_W, ICON_H],
+        iconAnchor: [ICON_W / 2, ICON_H],
+        popupAnchor: [0, -ICON_H],
+      });
 
-          if (bounds.length) {
-            try {
-              map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
-            } catch (e) {}
-          }
+      window._setPins = function (payload) {
+        const myPins = Array.isArray(payload?.myPins) ? payload.myPins : [];
+        const communityPins = Array.isArray(payload?.communityPins) ? payload.communityPins : [];
 
-          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({
-                type: "pins_rendered",
-                count: communityLayer.getLayers().length
-              })
-            );
-          }
-        } catch (e) {
-          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({ type: "pins_error", error: String(e) })
-            );
-          }
+        pinLayer.clearLayers();
+        communityLayer.clearLayers();
+
+        const bounds = [];
+
+        myPins.forEach(function (p) {
+          if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
+          const name = p.commonName || p.scientificName || "Pinned plant";
+          const sci = p.scientificName || "";
+          const html = "<strong>" + name + "</strong><br/><small>" + sci + "</small>";
+
+          L.marker([p.lat, p.lng], { icon: myPinIcon })
+            .addTo(pinLayer)
+            .bindPopup(html);
+
+          bounds.push([p.lat, p.lng]);
+        });
+
+        communityPins.forEach(function (p) {
+          if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
+          const name = p.commonName || p.scientificName || "Community plant";
+          const sci = p.scientificName || "";
+          const html = "<strong>" + name + "</strong><br/><small>" + sci + "</small>";
+
+          L.marker([p.lat, p.lng], { icon: communityPinIcon })
+            .addTo(communityLayer)
+            .bindPopup(html);
+
+          bounds.push([p.lat, p.lng]);
+        });
+
+        if (bounds.length) {
+          try { map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 }); } catch (e) {}
         }
       };
 
       let userMarker = null;
+
       function setUserLocation(lat, lng) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
         if (userMarker) userMarker.remove();
-        userMarker = L.circleMarker([lat, lng], {
-          radius: 7,
-          color: "#1e90ff",
-          fillColor: "#1e90ff",
-          fillOpacity: 0.8
-        }).addTo(map);
+
+        userMarker = L.marker([lat, lng], { icon: myLocationIcon })
+          .addTo(map)
+          .bindPopup("<strong>My Location</strong>");
       }
 
       document.getElementById("recenter").onclick = function () {
-        if (userMarker) {
-          map.setView(userMarker.getLatLng(), 15, { animate: true });
-        }
-        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-          window.ReactNativeWebView.postMessage(
-            JSON.stringify({ type: "recenter_tapped" })
-          );
-        }
+        if (userMarker) map.setView(userMarker.getLatLng(), 15, { animate: true });
       };
 
       function onMsg(e) {
         try {
           const msg = JSON.parse(e.data);
-          if (msg.type === "user_location") {
-            setUserLocation(msg.payload.lat, msg.payload.lng);
-          }
+          if (msg.type === "user_location") setUserLocation(msg.payload.lat, msg.payload.lng);
         } catch (_) {}
       }
 
@@ -212,29 +300,137 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <WebView
-        ref={webRef}
-        originWhitelist={["*"]}
-        javaScriptEnabled
-        domStorageEnabled
-        onLoadEnd={onWebViewLoad}
-        source={{ html: leafletHTML(coords) }}
-        onMessage={(e) => {
-          try {
-            const m = JSON.parse(e.nativeEvent.data);
-            if (m.type === "pins_rendered") {
-              console.log("Leaflet rendered pins:", m.count);
-            }
-            if (m.type === "pins_error") {
-              console.log("Leaflet pin error:", m.error);
-            }
-          } catch {}
-        }}
-      />
+      <View style={[styles.screenInner, { paddingTop: (insets.top || 0) + 8 }]}>
+        {/* MAP FRAME */}
+        <View style={[styles.mapFrame, { height: MAP_FRAME_HEIGHT }]}>
+          <WebView
+            ref={webRef}
+            originWhitelist={["*"]}
+            javaScriptEnabled
+            domStorageEnabled
+            onLoadEnd={onWebViewLoad}
+            source={{ html: leafletHTML(coords, topOffset) }}
+            allowFileAccess
+            allowFileAccessFromFileURLs
+            allowUniversalAccessFromFileURLs
+          />
+        </View>
+
+        <View style={{ flex: 1 }} />
+      </View>
+
+      {/* BOTTOM BAR: Back Button + Legend */}
+      <View
+        style={[
+          styles.bottomBar,
+          { paddingBottom: Math.max(insets.bottom || 0, 10) },
+        ]}
+      >
+        <View style={styles.backSlot}>
+          <BackButton />
+        </View>
+
+        <View style={styles.legendCard}>
+          <Text style={styles.legendTitle}>Legend</Text>
+
+          <View style={styles.legendRowWrap}>
+            <View style={styles.legendItemFixed}>
+              <Image source={MyPinIcon} style={styles.legendIcon} />
+              <Text style={styles.legendText}>My Pins</Text>
+            </View>
+
+            <View style={styles.legendItemFixed}>
+              <Image source={CommunityPinIcon} style={styles.legendIcon} />
+              <Text style={styles.legendText}>Community</Text>
+            </View>
+
+            <View style={styles.legendItemFixed}>
+              <Image source={MyLocationPinIcon} style={styles.legendIcon} />
+              <Text style={styles.legendText}>My Location</Text>
+            </View>
+          </View>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, marginTop: Platform.OS === "android" ? 25 : 0 },
+  container: {
+    flex: 1,
+    marginTop: Platform.OS === "android" ? 25 : 0,
+    backgroundColor: "#4c6233",
+  },
+
+  screenInner: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+
+  mapFrame: {
+    width: "100%",
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "#c9e4ca",
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
+  },
+
+  bottomBar: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 12,
+  },
+
+  backSlot: {
+    width: 64, 
+    alignItems: "flex-start",
+    justifyContent: "flex-end",
+  },
+
+  legendCard: {
+    flex: 1,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "#c9e4ca",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
+  },
+
+  legendTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+
+  legendRowWrap: {
+  flexDirection: "row",
+  flexWrap: "wrap",          
+  alignItems: "center",
+  gap: 12,
+  },
+
+  legendItemFixed: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 8,
+  minWidth: "48%",           
+  },
+
+  legendIcon: {
+    width: 22,
+    height: 22,
+    resizeMode: "contain",
+  },
+
+  legendText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
 });

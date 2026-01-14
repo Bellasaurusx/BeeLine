@@ -11,6 +11,8 @@ model Plant {
   id              String           @id @default(cuid())
   common          String
   scientific      String
+  pollinatorFriendly Boolean?     
+  pollinatorNotes   String?
   createdAt       DateTime         @default(now())
   identifications Identification[]
 }
@@ -34,6 +36,22 @@ model Observation {
   commonName     String?
   scientificName String?
   imageUrl       String?
-  confidence     Float?   // 0–1 from PlantNet
+  confidence     Float?   
+  pollinatorFriendly Boolean?
   createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([scientificName])
+  @@index([lat, lng])
+}
+
+model Tip {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  insight   String
+  tip       String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

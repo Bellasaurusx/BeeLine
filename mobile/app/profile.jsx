@@ -10,7 +10,7 @@ import {
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 
-import { auth } from "../FirebaseConfig"; // adjust path if needed
+import { auth } from "../FirebaseConfig";
 import ProfilePic from "../assets/profile.jpg";
 import { useLeftHand } from "./LeftHandContext";
 
@@ -19,25 +19,21 @@ export default function Profile() {
   const { leftHandMode, toggleLeftHandMode } = useLeftHand();
 
   const handleLogout = () => {
-    Alert.alert(
-      "Log out",
-      "Are you sure you want to log out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Log out",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await signOut(auth);
-              router.replace("/login");
-            } catch (err) {
-              Alert.alert("Error", err.message);
-            }
-          },
+    Alert.alert("Log out", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await signOut(auth);
+            router.replace("/login");
+          } catch (err) {
+            Alert.alert("Error", err?.message || "Logout failed.");
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -69,9 +65,7 @@ export default function Profile() {
         {/* Logout */}
         <TouchableOpacity style={styles.optionRow} onPress={handleLogout}>
           <View style={styles.bullet} />
-          <Text style={[styles.optionText, styles.logoutText]}>
-            Log out
-          </Text>
+          <Text style={[styles.optionText, styles.logoutText]}>Log out</Text>
         </TouchableOpacity>
       </View>
 

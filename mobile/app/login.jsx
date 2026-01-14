@@ -30,9 +30,9 @@ export default function Login() {
     try {
       setLoading(true);
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.replace("/home"); // ✅ prevents back-nav to login
+      router.replace("/home"); // prevents back-nav to login
     } catch (err) {
-      Alert.alert("Login failed", err.message);
+      Alert.alert("Login failed", err?.message || "Please try again.");
     } finally {
       setLoading(false);
     }
@@ -78,7 +78,7 @@ export default function Login() {
 
       {/* Login */}
       <TouchableOpacity
-        style={styles.loginBtn}
+        style={[styles.loginBtn, loading && styles.btnDisabled]}
         onPress={handleLogin}
         disabled={loading}
       >
@@ -91,6 +91,7 @@ export default function Login() {
       <TouchableOpacity
         style={styles.createBtn}
         onPress={() => router.push("/signup")}
+        disabled={loading}
       >
         <Text style={styles.createText}>Create account</Text>
       </TouchableOpacity>
@@ -145,6 +146,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 35,
     borderRadius: 20,
     marginTop: 10,
+  },
+  btnDisabled: {
+    opacity: 0.6,
   },
   loginText: {
     fontWeight: "600",

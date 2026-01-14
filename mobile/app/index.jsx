@@ -1,5 +1,5 @@
 // app/index.jsx
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -8,15 +8,39 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Bkg from "../assets/bkg.png";
+
+const ONBOARD_KEY = "beeline:onboardingSeen:v1";
+
+// ✅ TESTING MODE: force onboarding every app launch
+const FORCE_ONBOARDING_FOR_TESTING = true;
 
 export default function Splash() {
   const router = useRouter();
 
+  useEffect(() => {
+    (async () => {
+      try {
+        if (FORCE_ONBOARDING_FOR_TESTING) {
+          await AsyncStorage.removeItem(ONBOARD_KEY);
+          router.replace("/onboarding");
+          return;
+        }
+
+        const seen = await AsyncStorage.getItem(ONBOARD_KEY);
+        if (seen !== "true") {
+          router.replace("/onboarding");
+        }
+      } catch (e) {
+        console.warn("Onboarding check failed:", e);
+      }
+    })();
+  }, [router]);
+
   return (
     <ImageBackground source={Bkg} style={styles.bg} resizeMode="cover">
-      {/* Title + tagline (moved lower now) */}
       <View style={styles.centerContent}>
         <Text style={styles.title}>Beeline</Text>
 
@@ -26,7 +50,6 @@ export default function Splash() {
         </Text>
       </View>
 
-      {/* Bigger button at bottom */}
       <TouchableOpacity
         style={styles.button}
         onPress={() => router.push("/login")}
@@ -46,9 +69,8 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
 
-  /* moved DOWN more (towards the vertical center) */
   centerContent: {
-    marginTop: "99%", 
+    marginTop: "99%",
     paddingHorizontal: 30,
     alignItems: "center",
   },
@@ -68,7 +90,6 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     fontWeight: "400",
   },
-
 
   button: {
     backgroundColor: "#f4b400",
