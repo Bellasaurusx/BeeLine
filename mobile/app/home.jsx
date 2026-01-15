@@ -188,7 +188,7 @@ export default function Home() {
         style={styles.backButton}
         onPress={() => router.push("/login")}
       >
-        <Text style={styles.backArrow}>←</Text>
+        <Text style={styles.backArrow}>Logout</Text>
       </TouchableOpacity>
     </View>
   );
@@ -337,7 +337,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   backArrow: {
-    fontSize: 26,
+    fontSize: 16,
     color: "#333",
+    fontWeight: "600",
   },
 });
