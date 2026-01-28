@@ -1,5 +1,4 @@
-// app/signup.jsx
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,16 +9,54 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+
+import { auth } from "../FirebaseConfig";
 import Logo from "../assets/Logo.png";
 
 export default function SignUp() {
   const router = useRouter();
 
-  const handleFakeSignUp = () => {
-    Alert.alert(
-      "work in progess",
-      "waitng for backend"
-    );
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSignUp = async () => {
+    if (!name || !email || !password || !confirmPassword) {
+      Alert.alert("Missing fields", "Please fill out all fields.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Passwords don’t match", "Please confirm your password.");
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert("Weak password", "Password must be at least 6 characters.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const userCred = await createUserWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+
+      // Set display name in Firebase Auth profile
+      await updateProfile(userCred.user, { displayName: name.trim() });
+
+      router.replace("/home");
+    } catch (err) {
+      Alert.alert("Sign up failed", err?.message || "Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -33,34 +70,53 @@ export default function SignUp() {
         placeholder="Name"
         placeholderTextColor="#333"
         style={styles.input}
+        value={name}
+        onChangeText={setName}
       />
+
       <TextInput
         placeholder="Email"
         placeholderTextColor="#333"
         style={styles.input}
         keyboardType="email-address"
+        autoCapitalize="none"
+        value={email}
+        onChangeText={setEmail}
       />
+
       <TextInput
         placeholder="Password"
         placeholderTextColor="#333"
         secureTextEntry
         style={styles.input}
+        value={password}
+        onChangeText={setPassword}
       />
+
       <TextInput
         placeholder="Confirm Password"
         placeholderTextColor="#333"
         secureTextEntry
         style={styles.input}
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
       />
 
-      <TouchableOpacity style={styles.signupBtn} onPress={handleFakeSignUp}>
-        <Text style={styles.signupText}>Sign up</Text>
+      <TouchableOpacity
+        style={[styles.signupBtn, loading && styles.btnDisabled]}
+        onPress={handleSignUp}
+        disabled={loading}
+      >
+        <Text style={styles.signupText}>
+          {loading ? "Creating..." : "Sign up"}
+        </Text>
       </TouchableOpacity>
 
       {/* “Already have an account?” link */}
       <TouchableOpacity
         style={styles.loginLink}
         onPress={() => router.push("/login")}
+        disabled={loading}
       >
         <Text style={styles.loginLinkText}>Already have an account? Log in</Text>
       </TouchableOpacity>
@@ -69,6 +125,7 @@ export default function SignUp() {
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => router.push("/login")}
+        disabled={loading}
       >
         <Text style={styles.backArrow}>←</Text>
       </TouchableOpacity>
@@ -112,6 +169,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 35,
     borderRadius: 20,
     marginTop: 10,
+  },
+  btnDisabled: {
+    opacity: 0.6,
   },
   signupText: {
     fontWeight: "600",
