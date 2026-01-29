@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useFocusEffect } from "@react-navigation/native";
@@ -10,10 +10,10 @@ import MapIcon from "../assets/mapicon.png";
 import CamIcon from "../assets/cameraicon.png";
 import GalleryIcon from "../assets/galleryicon.png";
 import SettingsIcon from "../assets/settingsicon.png";
-import HomeIcon from "../assets/homeicon.png";
 import Img1 from "../assets/flower1.png";
 import Img2 from "../assets/flower2.jpg";
-import BellIcon from "../assets/bell-icon.png";
+import Logo from "../assets/HD_SPLASH_TRANS.png";
+
 
 // --- Daily Tip config ---
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -27,9 +27,7 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 export default function Home() {
   const router = useRouter();
 
-    // --- Daily Fact state ---
   const [dailyFact, setDailyFact] = useState("Loading today's fact...");
-
   const [hasUnread, setHasUnread] = useState(false);
 
   useFocusEffect(
@@ -51,13 +49,12 @@ export default function Home() {
     }, [])
   );
 
-  // --- Load daily fact from DB tips (cached, changes once/day) ---
   useEffect(() => {
     let cancelled = false;
 
     async function loadDailyFact() {
       try {
-        const today = new Date().toISOString().slice(0, 10); 
+        const today = new Date().toISOString().slice(0, 10);
 
         const [cachedJson, fetchedAtStr, savedId, savedDate] = await Promise.all([
           AsyncStorage.getItem(TIPS_KEY),
@@ -96,7 +93,6 @@ export default function Home() {
           return;
         }
 
-        // Deterministic "tip of the day" pick
         const start = new Date(new Date().getFullYear(), 0, 0);
         const diff = Date.now() - start.getTime();
         const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -124,71 +120,64 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
-
       {/* Daily Tip */}
       <View style={styles.factBox}>
         <Text style={styles.factText}>Daily Tip:</Text>
         <Text style={styles.factSub}>{dailyFact}</Text>
       </View>
 
+      {/* Top Logo */}
+      <View style={styles.logoWrap}>
+        <Image source={Logo} style={styles.logo} />
+      </View>
+
       {/* Main Image Tiles */}
       <View style={styles.tiles}>
-        <TouchableOpacity
-          style={styles.tileWrapper}
-          onPress={() => router.push("/photogal")}
-        >
+        <TouchableOpacity style={styles.tileWrapper} onPress={() => router.push("/photogal")}>
           <Image source={Img1} style={styles.tileImage} />
           <Text style={styles.tileLabel}>Recent Photos</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.tileWrapper}
-          onPress={() => router.push("/wellness")}
-        >
+        <TouchableOpacity style={styles.tileWrapper} onPress={() => router.push("/wellness")}>
           <Image source={Img2} style={styles.tileImage} />
           <Text style={styles.tileLabel}>Wellness</Text>
         </TouchableOpacity>
-
       </View>
 
-      {/* Right Sidebar Buttons */}
+      {/* Right Sidebar Buttons (icon + label) */}
       <View style={styles.sidebar}>
-        <TouchableOpacity 
-          style={styles.iconBtn}
-          onPress={() => router.push("/maps")}
-        >
-          <Image source={MapIcon} style={styles.iconImg} />
+        <TouchableOpacity style={styles.iconItem} onPress={() => router.push("/maps")}>
+          <View style={styles.iconBtn}>
+            <Image source={MapIcon} style={styles.iconImg} />
+          </View>
+          <Text style={styles.iconLabel}>Map</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => router.push("/camera")}
-        >
-          <Image source={CamIcon} style={styles.iconImg} />
+        <TouchableOpacity style={styles.iconItem} onPress={() => router.push("/camera")}>
+          <View style={styles.iconBtn}>
+            <Image source={CamIcon} style={styles.iconImg} />
+          </View>
+          <Text style={styles.iconLabel}>Identify</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => router.push("/collection")}
-        >
-          <Image source={GalleryIcon} style={styles.iconImg} />
+        <TouchableOpacity style={styles.iconItem} onPress={() => router.push("/collection")}>
+          <View style={styles.iconBtn}>
+            <Image source={GalleryIcon} style={styles.iconImg} />
+          </View>
+          <Text style={styles.iconLabel}>Collection</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => router.push("/profile")}
-        >
-          <Image source={SettingsIcon} style={styles.iconImg} />
+        <TouchableOpacity style={styles.iconItem} onPress={() => router.push("/profile")}>
+          <View style={styles.iconBtn}>
+            <Image source={SettingsIcon} style={styles.iconImg} />
+          </View>
+          <Text style={styles.iconLabel}>Settings</Text>
         </TouchableOpacity>
       </View>
 
-
-      {/* Back Button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => router.push("/login")}
-      >
-        <Text style={styles.backArrow}>Logout</Text>
+      {/* Logout (pill button, not squished) */}
+      <TouchableOpacity style={styles.logoutBtn} onPress={() => router.push("/login")}>
+        <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
     </View>
   );
@@ -197,77 +186,37 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#4c6233", // BeeLine green
-    paddingTop: 170,
+    backgroundColor: "#4c6233",
+    paddingTop: 175,
     paddingHorizontal: 20,
   },
 
-  iconBtn: {
-    backgroundColor: "#5C4033",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  logoWrap: {
+  position: "absolute",
+  top: 55,
+  left: 0,
+  right: 0,
+  alignItems: "center",
+},
 
-  iconImg: {
-    width: 28,
-    height: 28,
-    resizeMode: "contain",
-  },
+logo: {
+  width: 170,
+  height: 120,
+  resizeMode: "contain",
+},
 
-  /* HEADER */
-  topHeader: {
-    backgroundColor: "#7fa96b",
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 6,
-    marginBottom: 25,
-
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  headerLeft: {
-    flex: 1,            
-  },
-
-  headerItem: {
-    color: "#fff",
-    fontSize: 18,
-    marginBottom: 0,      
-  },
-
-  bellWrap: {
-    position: "relative",
-  },
-
-  bell: {
-    fontSize: 22,
-    color: "#fff",
-  },
-  /* Notification Dot */
-  redDot: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#D0021B",
-  },
 
   /* FACT BOX */
   factBox: {
     backgroundColor: "#fff",
     borderColor: "#7fa96b",
     borderWidth: 3,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 12,
     alignSelf: "center",
     marginBottom: 25,
+    width: "90%",
   },
   factText: {
     fontSize: 16,
@@ -303,42 +252,56 @@ const styles = StyleSheet.create({
   /* SIDEBAR ICONS */
   sidebar: {
     position: "absolute",
-    right: 20,
-    bottom: 100,
+    right: 18,
+    bottom: 120,
     gap: 16,
+    alignItems: "center",
+  },
+  iconItem: {
+    alignItems: "center",
   },
   iconBtn: {
     backgroundColor: "#F4EBD0",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: "center",
     justifyContent: "center",
   },
-  icon: {
-    fontSize: 22,
+  iconImg: {
+    width: 28,
+    height: 28,
+    resizeMode: "contain",
+  },
+  iconLabel: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 6,
+    opacity: 0.95,
   },
 
-  /* BACK BUTTON */
-  backButton: {
+  /* LOGOUT PILL */
+  logoutBtn: {
     position: "absolute",
-    bottom: 30,
+    bottom: 28,
     left: 20,
     backgroundColor: "#f4cf65",
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    paddingVertical: 14,
+    paddingHorizontal: 26,
+    borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
+    minWidth: 120,
     shadowColor: "#000",
     shadowOffset: { width: 2, height: 3 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
   },
-  backArrow: {
+  logoutText: {
     fontSize: 16,
     color: "#333",
-    fontWeight: "600",
+    fontWeight: "700",
   },
 });
