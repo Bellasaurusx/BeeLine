@@ -1,117 +1,222 @@
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Image,
+  StyleSheet,
+  Pressable,
+} from "react-native";
 import { useRouter } from "expo-router";
 import Logo from "../assets/HD_SPLASH_TRANS.png";
 
 export default function Login() {
   const router = useRouter();
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const canLogin = email.trim().length > 0 && password.trim().length > 0;
+
   return (
     <View style={styles.container}>
       {/* Logo */}
       <Image source={Logo} style={styles.logo} />
 
-      {/* Google Button (not functional) */}
-      <TouchableOpacity style={styles.socialBtn}>
-        <Text style={styles.socialText}>Log in With Google</Text>
-      </TouchableOpacity>
+      <Text style={styles.title}>Log in to BeeLine</Text>
 
-      {/* Apple Button (not functional) */}
-      <TouchableOpacity style={styles.socialBtn}>
-        <Text style={styles.socialText}>Log in With Apple</Text>
-      </TouchableOpacity>
+      {/* Social Pill Buttons (placeholder, not functional yet) */}
+      <Pressable
+        onPress={() => {}}
+        style={({ pressed }) => [
+          styles.pillBtn,
+          pressed && styles.pillPressed,
+        ]}
+      >
+        <Text style={styles.pillText}>Log in with Google</Text>
+      </Pressable>
 
-      <Text style={styles.or}>-- or --</Text>
+      <Pressable
+        onPress={() => {}}
+        style={({ pressed }) => [
+          styles.pillBtn,
+          pressed && styles.pillPressed,
+        ]}
+      >
+        <Text style={styles.pillText}>Log in with Apple</Text>
+      </Pressable>
 
-      {/* Email Input */}
-      <TextInput placeholder="Email:" style={styles.input} placeholderTextColor="#333" />
+      {/* Divider */}
+      <View style={styles.dividerRow}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.dividerLine} />
+      </View>
 
-      {/* Password Input */}
+      {/* Inputs */}
       <TextInput
-        placeholder="Password:"
-        secureTextEntry
+        placeholder="Email"
+        placeholderTextColor={stylesVars.placeholder}
         style={styles.input}
-        placeholderTextColor="#333"
+        autoCapitalize="none"
+        keyboardType="email-address"
+        value={email}
+        onChangeText={setEmail}
       />
 
-      {/* Working */}
-      <TouchableOpacity
-        style={styles.loginBtn}
-        onPress={() => router.push("/home")} 
-      >
-        <Text style={styles.loginText}>Log in</Text>
-      </TouchableOpacity>
+      <TextInput
+        placeholder="Password"
+        placeholderTextColor={stylesVars.placeholder}
+        style={styles.input}
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
 
-      {/* Working */}
-      <TouchableOpacity
-        style={styles.createBtn}
-        onPress={() => router.push("/signup")}
+
+      {/* Primary Login Button (yellow pill) */}
+      <Pressable
+        onPress={() => router.push("/home")}
+        disabled={!canLogin}
+        style={({ pressed }) => [
+          styles.pillBtnPrimary,
+          !canLogin && styles.disabled,
+          pressed && canLogin && styles.pillPressed,
+        ]}
       >
-        <Text style={styles.createText}>Create account</Text>
-      </TouchableOpacity>
+        <Text style={styles.pillPrimaryText}>Log in</Text>
+      </Pressable>
+
+      {/* Link-style secondary action */}
+      <Pressable onPress={() => router.push("/signup")} style={styles.linkWrap}>
+        <Text style={styles.linkText}>
+          Don’t have an account? <Text style={styles.linkTextBold}>Sign up</Text>
+        </Text>
+      </Pressable>
     </View>
   );
 }
 
+const stylesVars = {
+  bg: "#4c6233",
+  inputBg: "#88a06b",
+  inputBorder: "#2c3e20",
+  yellow: "#f4cf65", 
+  textDark: "#111",
+  linkYellow: "#f4cf65",
+  placeholder: "#2c3e20",
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#4c6233", // green background like mockup
+    backgroundColor: stylesVars.bg,
     alignItems: "center",
-    paddingTop: 60,
+    paddingTop: 70,
+    paddingHorizontal: 18,
   },
+
   logo: {
-    width: 180,
-    height: 140,
+    width: 220,
+    height: 160,
     resizeMode: "contain",
-    marginBottom: 40,
+    marginBottom: 18,
   },
-  socialBtn: {
-    backgroundColor: "#f4cf65",
-    paddingVertical: 14,
-    width: "70%",
-    borderRadius: 30,
-    marginBottom: 15,
-    alignItems: "center",
-  },
-  socialText: {
-    fontWeight: "600",
-    color: "#333",
-  },
-  or: {
+
+  title: {
     color: "#fff",
-    marginVertical: 20,
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 18,
   },
+
+  // Social + main button pill base (consistent)
+  pillBtn: {
+    width: "86%",
+    backgroundColor: stylesVars.yellow,
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  pillText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: stylesVars.textDark,
+  },
+
+  // Divider line + "or"
+  dividerRow: {
+    width: "86%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.45)",
+  },
+  dividerText: {
+    color: "#fff",
+    marginHorizontal: 12,
+    fontWeight: "800",
+  },
+
   input: {
-    width: "70%",
-    backgroundColor: "#88a06b",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    marginBottom: 15,
-    borderRadius: 4,
-    color: "#000",
-    borderWidth: 1,
-    borderColor: "#2c3e20",
+  width: "86%",
+  backgroundColor: stylesVars.inputBg,
+  paddingVertical: 14,
+  paddingHorizontal: 14,
+  borderRadius: 14,
+  borderWidth: 1,
+  borderColor: stylesVars.inputBorder,
+
+  // readability
+  color: "#1a1a1a",
+  fontSize: 16,
+  fontWeight: "600",
+
+  marginBottom: 12,
+},
+
+  // Primary login pill
+  pillBtnPrimary: {
+    width: "86%",
+    backgroundColor: stylesVars.yellow,
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
   },
-  loginBtn: {
-    backgroundColor: "#f4cf65",
-    paddingVertical: 10,
-    paddingHorizontal: 35,
-    borderRadius: 20,
-    marginTop: 10,
+  pillPrimaryText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: stylesVars.textDark,
   },
-  loginText: {
-    fontWeight: "600",
-    color: "#000",
+
+  // Press feedback
+  pillPressed: {
+    transform: [{ scale: 0.985 }],
+    opacity: 0.95,
   },
-  createBtn: {
-    marginTop: 25,
+  disabled: {
+    opacity: 0.55,
   },
-  createText: {
-    backgroundColor: "#b9a6f4",
-    paddingHorizontal: 20,
+
+  linkWrap: {
+    marginTop: 14,
     paddingVertical: 8,
-    borderRadius: 20,
-    color: "#000",
-    fontWeight: "500",
+  },
+  linkText: {
+    color: stylesVars.linkYellow,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  linkTextBold: {
+    fontWeight: "700",
   },
 });
+
