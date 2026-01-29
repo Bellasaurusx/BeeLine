@@ -10,31 +10,14 @@ import {
   Image,
   Alert,
   Share,
+  Modal,
+  Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BeeIcon from "../assets/bee_icon.png";
 import BackButton from "./components/BackButton";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
-
-function PollinatorBadge({ variant = "icon" }) {
-  if (variant === "pill") {
-    return (
-      <View style={styles.pollinatorPill}>
-        <View>
-          <Image source={BeeIcon} style={styles.pollinatorBee} resizeMode="contain" />
-        </View>
-        <Text style={styles.pollinatorPillText}>Pollinator-Friendly</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.pollinatorDot}>
-      <Image source={BeeIcon} style={styles.pollinatorBee} resizeMode="contain" />
-    </View>
-  );
-}
 
 export default function CollectionScreen() {
   const insets = useSafeAreaInsets();
@@ -46,6 +29,9 @@ export default function CollectionScreen() {
   const [sortBy, setSortBy] = useState("newest");
   const [onlyWithPhotos, setOnlyWithPhotos] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+
+  // Pollinator badge tooltip modal 
+  const [badgeOpen, setBadgeOpen] = useState(false);
 
   useEffect(() => {
     async function run() {
@@ -148,6 +134,12 @@ export default function CollectionScreen() {
     }
   };
 
+  const PollinatorIconButton = () => (
+    <TouchableOpacity onPress={() => setBadgeOpen(true)} hitSlop={12} style={styles.beeIconWrap}>
+      <Image source={BeeIcon} style={styles.beeIcon} />
+    </TouchableOpacity>
+  );
+
   const renderItem = ({ item }) => {
     const title = item.commonName || item.scientificName || "Unknown plant";
     const subtitle = item.commonName && item.scientificName ? item.scientificName : "";
@@ -165,7 +157,7 @@ export default function CollectionScreen() {
           <View style={styles.titleRow}>
             <Text style={styles.cardTitle}>{title}</Text>
 
-            {item.pollinatorFriendly ? <PollinatorBadge variant="icon" /> : null}
+            {item.pollinatorFriendly === true ? <PollinatorIconButton /> : null}
           </View>
 
           {!!subtitle && <Text style={styles.cardSubtitle}>{subtitle}</Text>}
@@ -198,24 +190,40 @@ export default function CollectionScreen() {
 
         <View style={styles.detailCard}>
           {!!selectedItem.imageUrl && (
-            <Image
-              source={{ uri: selectedItem.imageUrl }}
-              style={styles.detailImage}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: selectedItem.imageUrl }} style={styles.detailImage} resizeMode="cover" />
           )}
 
           <View style={styles.titleRow}>
             <Text style={styles.detailTitle}>{title}</Text>
-            {selectedItem.pollinatorFriendly ? <PollinatorBadge variant="icon" /> : null}
+            {selectedItem.pollinatorFriendly === true ? <PollinatorIconButton /> : null}
           </View>
 
           {!!subtitle && <Text style={styles.detailSubtitle}>{subtitle}</Text>}
           {!!date && <Text style={styles.meta}>Pinned: {date}</Text>}
           {!!confidence && <Text style={styles.meta}>Confidence: {confidence}</Text>}
-
-          {selectedItem.pollinatorFriendly ? <PollinatorBadge variant="pill" /> : null}
         </View>
+
+        {/* Pollinator Badge Info  */}
+        <Modal
+          visible={badgeOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setBadgeOpen(false)}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setBadgeOpen(false)}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Pollinator-Friendly</Text>
+              <Text style={styles.modalBody}>
+                This plant supports bees, butterflies, and other pollinators. BeeLine identifies
+                pollinator-friendly plants using curated ecological data and plant research.
+              </Text>
+
+              <Pressable style={styles.modalBtn} onPress={() => setBadgeOpen(false)}>
+                <Text style={styles.modalBtnText}>Got it</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
       </View>
     );
   }
@@ -253,12 +261,7 @@ export default function CollectionScreen() {
         style={[styles.filterToggle, onlyWithPhotos ? styles.filterToggleActive : null]}
         onPress={() => setOnlyWithPhotos((v) => !v)}
       >
-        <Text
-          style={[
-            styles.filterToggleText,
-            onlyWithPhotos ? styles.filterToggleTextActive : null,
-          ]}
-        >
+        <Text style={[styles.filterToggleText, onlyWithPhotos ? styles.filterToggleTextActive : null]}>
           Only show items with photos
         </Text>
       </TouchableOpacity>
@@ -266,24 +269,48 @@ export default function CollectionScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator />
-          <Text style={styles.meta}>Loading collection…</Text>
+          <Text style={styles.metaOnGreen}>Loading collection…</Text>
         </View>
       ) : error ? (
         <View style={styles.center}>
           <Text style={styles.error}>{error}</Text>
         </View>
       ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderItem}
-          contentContainerStyle={filtered.length === 0 ? styles.emptyListContainer : undefined}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              No items yet. Identify a plant and pin it to your map to build your collection.
-            </Text>
-          }
-        />
+        <>
+          <FlatList
+            data={filtered}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={renderItem}
+            contentContainerStyle={filtered.length === 0 ? styles.emptyListContainer : undefined}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>
+                No items yet. Identify a plant and pin it to your map to build your collection.
+              </Text>
+            }
+          />
+
+          {/* Pollinator Badge Info  */}
+          <Modal
+            visible={badgeOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setBadgeOpen(false)}
+          >
+            <Pressable style={styles.modalBackdrop} onPress={() => setBadgeOpen(false)}>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Pollinator-Friendly</Text>
+                <Text style={styles.modalBody}>
+                  This plant supports bees, butterflies, and other pollinators. BeeLine identifies
+                  pollinator-friendly plants using curated ecological data and plant research.
+                </Text>
+
+                <Pressable style={styles.modalBtn} onPress={() => setBadgeOpen(false)}>
+                  <Text style={styles.modalBtnText}>Got it</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Modal>
+        </>
       )}
     </View>
   );
@@ -334,10 +361,10 @@ const styles = StyleSheet.create({
 
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   error: { color: "#B00020", fontWeight: "700" },
-  meta: { color: "#666", marginTop: 10 },
+  metaOnGreen: { color: "#fff", marginTop: 10 },
 
   emptyListContainer: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 24 },
-  emptyText: { textAlign: "center", color: "#666" },
+  emptyText: { textAlign: "center", color: "#fff", opacity: 0.9 },
 
   card: {
     marginTop: 12,
@@ -378,7 +405,12 @@ const styles = StyleSheet.create({
   detailTitle: { fontSize: 24, fontWeight: "700", marginBottom: 4 },
   detailSubtitle: { fontSize: 16, fontStyle: "italic", color: "#555", marginBottom: 8 },
 
-  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
 
   headerRow: {
     flexDirection: "row",
@@ -395,26 +427,56 @@ const styles = StyleSheet.create({
   },
   shareBtnText: { color: "#000", fontWeight: "700" },
 
-  pollinatorDot: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "#F4B400",
+  // Pollinator badge 
+  beeIconWrap: {
+    marginLeft: 8,
+    backgroundColor: "#F9B233",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 8,
   },
-  pollinatorBee: { width: 16, height: 16 },
+  beeIcon: {
+    width: 14,
+    height: 14,
+    resizeMode: "contain",
+  },
 
-  pollinatorPill: {
-    marginTop: 12,
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: "#F4B400",
+  // Modal tooltip 
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    padding: 22,
   },
-  pollinatorPillText: { color: "#444", fontWeight: "600" },
+  modalCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: "#7fa96b",
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    marginBottom: 6,
+    color: "#111",
+  },
+  modalBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#333",
+  },
+  modalBtn: {
+    marginTop: 12,
+    backgroundColor: "#F9B233",
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignItems: "center",
+  },
+  modalBtnText: {
+    fontWeight: "800",
+    color: "#111",
+  },
 });
