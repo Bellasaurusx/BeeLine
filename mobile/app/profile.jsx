@@ -9,6 +9,10 @@ import {
 import { useRouter } from "expo-router";
 
 import ProfilePic from "../assets/profile.jpg";
+import SimpleBeeAnimation from "./components/SimpleBeeAnimation";
+
+
+
 
 export default function Profile() {
   const router = useRouter();
@@ -26,6 +30,11 @@ export default function Profile() {
         <TouchableOpacity>
           <Text style={styles.changePhotoText}>Change Photo</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Bee Animation */}
+      <View style={{ alignItems: "center", marginBottom: 30 }}>
+        <SimpleBeeAnimation />
       </View>
 
       {/* Options List */}
