@@ -1,8 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
-import { Link, useRouter } from "expo-router";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from "react-native";
+import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { useFocusEffect } from "@react-navigation/native";
 import { getUnread } from "../src/utils/notificationsStore";
 
@@ -10,7 +17,6 @@ import MapIcon from "../assets/mapicon.png";
 import CamIcon from "../assets/cameraicon.png";
 import GalleryIcon from "../assets/galleryicon.png";
 import SettingsIcon from "../assets/settingsicon.png";
-import HomeIcon from "../assets/homeicon.png";
 import Img1 from "../assets/flower1.png";
 import Img2 from "../assets/flower2.jpg";
 import BellIcon from "../assets/bell-icon.png";
@@ -27,9 +33,7 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 export default function Home() {
   const router = useRouter();
 
-    // --- Daily Fact state ---
-  const [dailyFact, setDailyFact] = useState("Loading today's fact...");
-
+  const [dailyFact, setDailyFact] = useState("Loading today's tip...");
   const [hasUnread, setHasUnread] = useState(false);
 
   useFocusEffect(
@@ -51,13 +55,12 @@ export default function Home() {
     }, [])
   );
 
-  // --- Load daily fact from DB tips (cached, changes once/day) ---
   useEffect(() => {
     let cancelled = false;
 
     async function loadDailyFact() {
       try {
-        const today = new Date().toISOString().slice(0, 10); 
+        const today = new Date().toISOString().slice(0, 10);
 
         const [cachedJson, fetchedAtStr, savedId, savedDate] = await Promise.all([
           AsyncStorage.getItem(TIPS_KEY),
@@ -96,7 +99,6 @@ export default function Home() {
           return;
         }
 
-        // Deterministic "tip of the day" pick
         const start = new Date(new Date().getFullYear(), 0, 0);
         const diff = Date.now() - start.getTime();
         const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -122,223 +124,246 @@ export default function Home() {
     };
   }, []);
 
+  const confirmLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", style: "destructive", onPress: () => router.push("/login") },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
-
-      {/* Daily Tip */}
-      <View style={styles.factBox}>
-        <Text style={styles.factText}>Daily Tip:</Text>
-        <Text style={styles.factSub}>{dailyFact}</Text>
-      </View>
-
-      {/* Main Image Tiles */}
-      <View style={styles.tiles}>
-        <TouchableOpacity
-          style={styles.tileWrapper}
-          onPress={() => router.push("/photogal")}
-        >
-          <Image source={Img1} style={styles.tileImage} />
-          <Text style={styles.tileLabel}>Recent Photos</Text>
-        </TouchableOpacity>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>BeeLine</Text>
+          <Text style={styles.headerSub}>Home Dashboard</Text>
+        </View>
 
         <TouchableOpacity
-          style={styles.tileWrapper}
-          onPress={() => router.push("/wellness")}
+          style={styles.notifBtn}
+          onPress={() => router.push("/notifications")}
+          activeOpacity={0.8}
         >
-          <Image source={Img2} style={styles.tileImage} />
-          <Text style={styles.tileLabel}>Wellness</Text>
-        </TouchableOpacity>
-
-      </View>
-
-      {/* Right Sidebar Buttons */}
-      <View style={styles.sidebar}>
-        <TouchableOpacity 
-          style={styles.iconBtn}
-          onPress={() => router.push("/maps")}
-        >
-          <Image source={MapIcon} style={styles.iconImg} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => router.push("/camera")}
-        >
-          <Image source={CamIcon} style={styles.iconImg} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => router.push("/collection")}
-        >
-          <Image source={GalleryIcon} style={styles.iconImg} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => router.push("/profile")}
-        >
-          <Image source={SettingsIcon} style={styles.iconImg} />
+          <Image source={BellIcon} style={styles.notifIcon} />
+          {hasUnread && <View style={styles.redDot} />}
         </TouchableOpacity>
       </View>
 
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Daily Tip Card */}
+        <View style={styles.tipCard}>
+          <Text style={styles.tipLabel}>Daily Tip</Text>
+          <Text style={styles.tipText}>{dailyFact}</Text>
+        </View>
 
-      {/* Back Button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => router.push("/login")}
-      >
-        <Text style={styles.backArrow}>Logout</Text>
-      </TouchableOpacity>
+        {/* Feature Tiles */}
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.tilesRow}>
+          <TouchableOpacity
+            style={styles.tile}
+            onPress={() => router.push("/photogal")}
+            activeOpacity={0.85}
+          >
+            <Image source={Img1} style={styles.tileImage} />
+            <View style={styles.tileOverlay}>
+              <Text style={styles.tileTitle}>Recent Photos</Text>
+              <Text style={styles.tileSub}>See your latest uploads</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.tile}
+            onPress={() => router.push("/wellness")}
+            activeOpacity={0.85}
+          >
+            <Image source={Img2} style={styles.tileImage} />
+            <View style={styles.tileOverlay}>
+              <Text style={styles.tileTitle}>Wellness</Text>
+              <Text style={styles.tileSub}>Eco habits + reminders</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Logout button */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={confirmLogout} activeOpacity={0.85}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 80 }} />
+      </ScrollView>
+
+      {/* Right Dock */}
+      <View style={styles.dock}>
+        <DockBtn icon={MapIcon} onPress={() => router.push("/maps")} />
+        <DockBtn icon={CamIcon} onPress={() => router.push("/camera")} />
+        <DockBtn icon={GalleryIcon} onPress={() => router.push("/collection")} />
+        <DockBtn icon={SettingsIcon} onPress={() => router.push("/profile")} />
+      </View>
     </View>
+  );
+}
+
+function DockBtn({ icon, onPress }) {
+  return (
+    <TouchableOpacity style={styles.dockBtn} onPress={onPress} activeOpacity={0.85}>
+      <Image source={icon} style={styles.dockIcon} />
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#4c6233", // BeeLine green
-    paddingTop: 170,
-    paddingHorizontal: 20,
+    backgroundColor: "#4c6233",
   },
 
-  iconBtn: {
-    backgroundColor: "#5C4033",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  iconImg: {
-    width: 28,
-    height: 28,
-    resizeMode: "contain",
-  },
-
-  /* HEADER */
-  topHeader: {
-    backgroundColor: "#7fa96b",
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 6,
-    marginBottom: 25,
-
+  header: {
+    paddingTop: 58,
+    paddingBottom: 14,
+    paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerTitle: {
+    color: "#ffffff",
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  headerSub: {
+    marginTop: 2,
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 12,
   },
 
-  headerLeft: {
-    flex: 1,            
-  },
-
-  headerItem: {
-    color: "#fff",
-    fontSize: 18,
-    marginBottom: 0,      
-  },
-
-  bellWrap: {
+  notifBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "rgba(244, 207, 101, 0.22)",
+    alignItems: "center",
+    justifyContent: "center",
     position: "relative",
   },
-
-  bell: {
-    fontSize: 22,
-    color: "#fff",
+  notifIcon: {
+    width: 22,
+    height: 22,
+    resizeMode: "contain",
   },
-  /* Notification Dot */
   redDot: {
     position: "absolute",
-    top: -2,
-    right: -2,
-    width: 10,
-    height: 10,
+    top: 10,
+    right: 10,
+    width: 9,
+    height: 9,
     borderRadius: 5,
     backgroundColor: "#D0021B",
   },
 
-  /* FACT BOX */
-  factBox: {
-    backgroundColor: "#fff",
-    borderColor: "#7fa96b",
-    borderWidth: 3,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignSelf: "center",
-    marginBottom: 25,
-  },
-  factText: {
-    fontSize: 16,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  factSub: {
-    textAlign: "center",
-    marginTop: 4,
+  content: {
+    paddingHorizontal: 18,
+    paddingBottom: 20,
   },
 
-  /* TILE IMAGES */
-  tiles: {
-    alignItems: "center",
-    gap: 25,
+  sectionTitle: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    fontWeight: "800",
+    marginTop: 14,
+    marginBottom: 10,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
   },
-  tileWrapper: {
-    alignItems: "center",
+
+  tipCard: {
+    backgroundColor: "rgba(0,0,0,0.18)",
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+  },
+  tipLabel: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 6,
+  },
+  tipText: {
+    color: "#ffffff",
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
+  },
+
+  tilesRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  tile: {
+    flex: 1,
+    borderRadius: 18,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "rgba(0,0,0,0.12)",
   },
   tileImage: {
-    width: 200,
-    height: 150,
-    borderRadius: 18,
-    borderWidth: 3,
-    borderColor: "#7fa96b",
+    width: "100%",
+    height: 170,
   },
-  tileLabel: {
-    color: "#fff",
-    marginTop: 6,
-    fontSize: 16,
+  tileOverlay: {
+    padding: 10,
   },
-
-  /* SIDEBAR ICONS */
-  sidebar: {
-    position: "absolute",
-    right: 20,
-    bottom: 100,
-    gap: 16,
+  tileTitle: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "900",
   },
-  iconBtn: {
-    backgroundColor: "#F4EBD0",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  icon: {
-    fontSize: 22,
+  tileSub: {
+    marginTop: 2,
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 12,
   },
 
-  /* BACK BUTTON */
-  backButton: {
-    position: "absolute",
-    bottom: 30,
-    left: 20,
+  logoutBtn: {
+    marginTop: 18,
     backgroundColor: "#f4cf65",
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    borderRadius: 16,
+    paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 2, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
   },
-  backArrow: {
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "600",
+  logoutText: {
+    color: "#2d2d2d",
+    fontWeight: "900",
+    fontSize: 14,
+    letterSpacing: 0.3,
+  },
+
+  // Right-side dock
+  dock: {
+    position: "absolute",
+    right: 16,
+    bottom: 24,
+    gap: 12,
+  },
+  dockBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dockIcon: {
+    width: 24,
+    height: 24,
+    resizeMode: "contain",
   },
 });
