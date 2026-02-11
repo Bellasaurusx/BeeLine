@@ -10,7 +10,6 @@ import {
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 
-import { auth } from "../FirebaseConfig";
 import ProfilePic from "../assets/profile.jpg";
 import { useLeftHand } from "./LeftHandContext";
 
@@ -36,6 +35,11 @@ export default function Profile() {
     ]);
   };
 
+  const handleLeftHandMode = () => {
+    console.log("Left hand mode pressed");
+    // later: toggle setting, AsyncStorage, context, etc.
+  };
+
   return (
     <View style={styles.container}>
       {/* Profile Picture */}
@@ -48,25 +52,12 @@ export default function Profile() {
 
       {/* Options List */}
       <View style={styles.options}>
-        {/* Left Hand Mode Toggle */}
-        <TouchableOpacity style={styles.optionRow} onPress={toggleLeftHandMode}>
-          <View style={[styles.bullet, leftHandMode && styles.bulletActive]} />
-          <Text style={styles.optionText}>
-            Left hand mode {leftHandMode ? "ON" : "OFF"}
-          </Text>
-        </TouchableOpacity>
-
-        <Option label="Location" />
-        <Option label="Disable account" />
-        <Option label="View Data" />
-        <Option label="Change password" />
-        <Option label="Change Email" />
-
-        {/* Logout */}
-        <TouchableOpacity style={styles.optionRow} onPress={handleLogout}>
-          <View style={styles.bullet} />
-          <Text style={[styles.optionText, styles.logoutText]}>Log out</Text>
-        </TouchableOpacity>
+        <Option label="Left hand mode" onPress={handleLeftHandMode} />
+        <Option label="Location" onPress={() => console.log("Location")} />
+        <Option label="Disable account" onPress={() => console.log("Disable")} />
+        <Option label="View Data" onPress={() => console.log("View Data")} />
+        <Option label="Change password" onPress={() => console.log("Password")} />
+        <Option label="Change Email" onPress={() => console.log("Email")} />
       </View>
 
       {/* Back Button */}
@@ -83,12 +74,14 @@ export default function Profile() {
   );
 }
 
-function Option({ label }) {
+function Option({ label, onPress }) {
   return (
-    <View style={styles.optionRow}>
-      <View style={styles.bullet} />
-      <Text style={styles.optionText}>{label}</Text>
-    </View>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.optionRow}>
+        <View style={styles.bullet} />
+        <Text style={styles.optionText}>{label}</Text>
+      </View>
+    </TouchableOpacity>
   );
 }
 

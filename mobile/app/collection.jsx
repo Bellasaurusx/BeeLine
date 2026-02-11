@@ -5,72 +5,203 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
+  Linking,
   TouchableOpacity,
   TextInput,
   Image,
   Alert,
   Share,
+  Modal,
+  Pressable,
+  ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BeeIcon from "../assets/bee_icon.png";
 import BackButton from "./components/BackButton";
+import { usePins } from "./state/PinsContext";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
-
-function PollinatorBadge({ variant = "icon" }) {
-  if (variant === "pill") {
-    return (
-      <View style={styles.pollinatorPill}>
-        <View>
-          <Image source={BeeIcon} style={styles.pollinatorBee} resizeMode="contain" />
-        </View>
-        <Text style={styles.pollinatorPillText}>Pollinator-Friendly</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.pollinatorDot}>
-      <Image source={BeeIcon} style={styles.pollinatorBee} resizeMode="contain" />
-    </View>
-  );
-}
 
 export default function CollectionScreen() {
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { pins: items, loading, error, fetchPins, deletePin } = usePins();
+
+  // Local UI state 
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [onlyWithPhotos, setOnlyWithPhotos] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
+  // Pollinator badge tooltip modal
+  const [badgeOpen, setBadgeOpen] = useState(false);
+
+  const [inatLoading, setInatLoading] = useState(false);
+  const [inat, setInat] = useState(null);
+
+  const [polliLoading, setPolliLoading] = useState(false);
+  const [polli, setPolli] = useState(null);
+
+  // ----------------------------
+  // Helpers (iNaturalist + taxonomy)
+  // ----------------------------
+  function cleanSciName(name = "") {
+    return name
+      .trim()
+      .replace(/\s+[A-Z][a-z]*\.?$/g, "")
+      .split(/\s+/)
+      .slice(0, 2)
+      .join(" ");
+  }
+
+  async function fetchINatTaxon(scientificName) {
+    const cleaned = cleanSciName(scientificName);
+    if (!cleaned) return null;
+
+    const url = `https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(
+      cleaned
+    )}&per_page=5`;
+
+    const res = await fetch(url);
+    const json = await res.json();
+
+    const results = Array.isArray(json?.results) ? json.results : [];
+    if (!results.length) return null;
+
+    const exact =
+      results.find((t) => (t.name || "").toLowerCase() === cleaned.toLowerCase()) ||
+      results[0];
+
+    if (!exact) return null;
+
+    const commonName =
+      exact.preferred_common_name ||
+      exact.english_common_name ||
+      (exact.common_names?.length ? exact.common_names[0].name : null);
+
+    return {
+      id: exact.id,
+      name: exact.name,
+      commonName,
+      rank: exact.rank,
+      iconicTaxon: exact.iconic_taxon_name,
+      observationsCount: exact.observations_count,
+      wikiUrl: exact.wikipedia_url || null,
+      photo: exact?.default_photo?.medium_url || exact?.default_photo?.square_url || null,
+      ancestors: exact.ancestors || [],
+    };
+  }
+
+  function extractFamilyFromAncestors(ancestors = []) {
+    const fam = ancestors.find((a) => a.rank === "family");
+    return fam?.name || null;
+  }
+
+  function extractGenusFromName(scientificName = "") {
+    return scientificName.trim().split(/\s+/)[0] || null;
+  }
+
+  // ----------------------------
+  // Load collection (from shared store)
+  // ----------------------------
   useEffect(() => {
+    fetchPins();
+  }, [fetchPins]);
+
+  // ----------------------------
+  // Delete pin (shared store + DB)
+  // ----------------------------
+  const confirmDelete = (item) => {
+    if (!item?.id) return;
+
+    const title = item.commonName || item.scientificName || "this plant";
+
+    Alert.alert(
+      "Delete this pin?",
+      `This will remove ${title} from your collection and map.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deletePin(item.id);
+              setSelectedItem(null);
+            } catch (e) {
+              Alert.alert("Delete failed", e?.message || "Could not delete this pin.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
     async function run() {
+      if (!selectedItem?.scientificName) {
+        setInat(null);
+        setPolli(null);
+        return;
+      }
+
+      // iNaturalist taxon lookup
       try {
-        setLoading(true);
-        setError("");
-
-        const res = await fetch(`${API_URL}/api/observations?limit=300&sort=newest`);
-        if (!res.ok) throw new Error("Failed to load collection");
-
-        const data = await res.json();
-        setItems(Array.isArray(data) ? data : []);
+        setInatLoading(true);
+        const taxon = await fetchINatTaxon(selectedItem.scientificName);
+        if (!cancelled) setInat(taxon);
       } catch (e) {
-        console.error(e);
-        setError("Could not load your collection. Please try again.");
+        console.error("iNat fetch failed:", e);
+        if (!cancelled) setInat(null);
       } finally {
-        setLoading(false);
+        if (!cancelled) setInatLoading(false);
+      }
+
+      // Pollinator status + notes
+      try {
+        setPolliLoading(true);
+        setPolli(null);
+
+        if (!API_URL) return;
+
+        const res = await fetch(`${API_URL}/api/pollinator-check`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: [
+              {
+                scientificName: selectedItem.scientificName,
+                commonName: selectedItem.commonName || "",
+              },
+            ],
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const first = Array.isArray(data?.results) ? data.results[0] : null;
+          if (!cancelled) setPolli(first || null);
+        }
+      } catch (e) {
+        console.error("Pollinator-check failed:", e);
+      } finally {
+        if (!cancelled) setPolliLoading(false);
       }
     }
 
     run();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedItem?.id, selectedItem?.scientificName]);
 
+  // ----------------------------
+  // Filter + sort list
+  // ----------------------------
   const filtered = useMemo(() => {
-    let result = [...items];
+    let result = [...(items || [])];
 
     if (onlyWithPhotos) {
       result = result.filter((x) => !!x?.imageUrl);
@@ -148,6 +279,12 @@ export default function CollectionScreen() {
     }
   };
 
+  const PollinatorIconButton = () => (
+    <TouchableOpacity onPress={() => setBadgeOpen(true)} hitSlop={12} style={styles.beeIconWrap}>
+      <Image source={BeeIcon} style={styles.beeIcon} />
+    </TouchableOpacity>
+  );
+
   const renderItem = ({ item }) => {
     const title = item.commonName || item.scientificName || "Unknown plant";
     const subtitle = item.commonName && item.scientificName ? item.scientificName : "";
@@ -164,8 +301,7 @@ export default function CollectionScreen() {
         <View style={styles.cardContent}>
           <View style={styles.titleRow}>
             <Text style={styles.cardTitle}>{title}</Text>
-
-            {item.pollinatorFriendly ? <PollinatorBadge variant="icon" /> : null}
+            {item.pollinatorFriendly === true ? <PollinatorIconButton /> : null}
           </View>
 
           {!!subtitle && <Text style={styles.cardSubtitle}>{subtitle}</Text>}
@@ -179,6 +315,9 @@ export default function CollectionScreen() {
     );
   };
 
+  // ----------------------------
+  // Details view
+  // ----------------------------
   if (selectedItem) {
     const title = selectedItem.commonName || selectedItem.scientificName || "Unknown plant";
     const subtitle =
@@ -189,8 +328,24 @@ export default function CollectionScreen() {
         ? `${Math.round(selectedItem.confidence * 100)}%`
         : null;
 
+    const family = extractFamilyFromAncestors(inat?.ancestors || []);
+    const genus = extractGenusFromName(selectedItem.scientificName);
+    const polliData = selectedItem?.pollinatorData || null;
+
+    const pollinatorLabel = polliLoading
+      ? "Loading…"
+      : polli?.pollinatorFriendly === true
+      ? "Pollinator-friendly "
+      : polli?.pollinatorFriendly === false
+      ? "Not flagged as pollinator-friendly"
+      : "Unknown";
+
     return (
-      <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
+      <ScrollView
+        style={[styles.container, { paddingTop: insets.top + 12 }]}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+      >
         <BackButton />
         <TouchableOpacity onPress={closeDetail} style={styles.backLink}>
           <Text style={styles.backLinkText}>← Back to collection</Text>
@@ -198,28 +353,171 @@ export default function CollectionScreen() {
 
         <View style={styles.detailCard}>
           {!!selectedItem.imageUrl && (
-            <Image
-              source={{ uri: selectedItem.imageUrl }}
-              style={styles.detailImage}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: selectedItem.imageUrl }} style={styles.detailImage} resizeMode="cover" />
           )}
 
           <View style={styles.titleRow}>
             <Text style={styles.detailTitle}>{title}</Text>
-            {selectedItem.pollinatorFriendly ? <PollinatorBadge variant="icon" /> : null}
+            {selectedItem.pollinatorFriendly === true ? <PollinatorIconButton /> : null}
           </View>
 
           {!!subtitle && <Text style={styles.detailSubtitle}>{subtitle}</Text>}
           {!!date && <Text style={styles.meta}>Pinned: {date}</Text>}
           {!!confidence && <Text style={styles.meta}>Confidence: {confidence}</Text>}
 
-          {selectedItem.pollinatorFriendly ? <PollinatorBadge variant="pill" /> : null}
+          {/* Delete Pin */}
+          <TouchableOpacity onPress={() => confirmDelete(selectedItem)} style={styles.deleteBtn}>
+            <Text style={styles.deleteBtnText}>Delete Pin</Text>
+          </TouchableOpacity>
         </View>
-      </View>
+
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Plant Details</Text>
+
+          {!!polli?.pollinatorNotes && <Text style={styles.bodyText}>{polli.pollinatorNotes}</Text>}
+
+          <View style={styles.divider} />
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Scientific name</Text>
+            <Text style={styles.value}>{selectedItem.scientificName || "—"}</Text>
+          </View>
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Genus</Text>
+            <Text style={styles.value}>{genus || "—"}</Text>
+          </View>
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Family (iNat)</Text>
+            <Text style={styles.value}>{inatLoading ? "Loading…" : family || "—"}</Text>
+          </View>
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Rank (iNat)</Text>
+            <Text style={styles.value}>{inatLoading ? "Loading…" : inat?.rank || "—"}</Text>
+          </View>
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Common name (iNat)</Text>
+            <Text style={styles.value}>{inatLoading ? "Loading…" : inat?.commonName || "—"}</Text>
+          </View>
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Observations (iNat)</Text>
+            <Text style={styles.value}>
+              {inatLoading
+                ? "Loading…"
+                : typeof inat?.observationsCount === "number"
+                ? inat.observationsCount.toLocaleString()
+                : "—"}
+            </Text>
+          </View>
+
+          {polliData ? (
+            <>
+              <View style={styles.divider} />
+
+              {!!polliData.nativeRange && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Native range</Text>
+                  <Text style={styles.value}>{polliData.nativeRange}</Text>
+                </View>
+              )}
+
+              {!!polliData.habitat && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Habitat</Text>
+                  <Text style={styles.value}>{polliData.habitat}</Text>
+                </View>
+              )}
+
+              {!!polliData.bloomTime && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Bloom time</Text>
+                  <Text style={styles.value}>{polliData.bloomTime}</Text>
+                </View>
+              )}
+
+              {!!polliData.sun && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Sun</Text>
+                  <Text style={styles.value}>{polliData.sun}</Text>
+                </View>
+              )}
+
+              {!!polliData.soil && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Soil</Text>
+                  <Text style={styles.value}>{polliData.soil}</Text>
+                </View>
+              )}
+
+              {!!polliData.water && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Water</Text>
+                  <Text style={styles.value}>{polliData.water}</Text>
+                </View>
+              )}
+
+              {!!polliData.height && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Height</Text>
+                  <Text style={styles.value}>{polliData.height}</Text>
+                </View>
+              )}
+
+              {!!polliData.spread && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Spread</Text>
+                  <Text style={styles.value}>{polliData.spread}</Text>
+                </View>
+              )}
+
+              {Array.isArray(polliData.pollinators) && polliData.pollinators.length > 0 && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Pollinators</Text>
+                  <Text style={styles.value}>{polliData.pollinators.join(", ")}</Text>
+                </View>
+              )}
+            </>
+          ) : null}
+
+          {!!inat?.wikiUrl && (
+            <TouchableOpacity style={styles.linkBtn} onPress={() => Linking.openURL(inat.wikiUrl)}>
+              <Text style={styles.linkBtnText}>Open Wikipedia</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Pollinator Badge Info */}
+        <Modal
+          visible={badgeOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setBadgeOpen(false)}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setBadgeOpen(false)}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Pollinator-Friendly</Text>
+              <Text style={styles.modalBody}>
+                This plant supports bees, butterflies, and other pollinators. BeeLine identifies
+                pollinator-friendly plants using curated ecological data and plant research.
+              </Text>
+
+              <Pressable style={styles.modalBtn} onPress={() => setBadgeOpen(false)}>
+                <Text style={styles.modalBtnText}>Got it</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
+      </ScrollView>
     );
   }
 
+  // ----------------------------
+  // List view
+  // ----------------------------
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <View style={styles.topRow}>
@@ -266,24 +564,48 @@ export default function CollectionScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator />
-          <Text style={styles.meta}>Loading collection…</Text>
+          <Text style={styles.metaOnGreen}>Loading collection…</Text>
         </View>
       ) : error ? (
         <View style={styles.center}>
           <Text style={styles.error}>{error}</Text>
         </View>
       ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderItem}
-          contentContainerStyle={filtered.length === 0 ? styles.emptyListContainer : undefined}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              No items yet. Identify a plant and pin it to your map to build your collection.
-            </Text>
-          }
-        />
+        <>
+          <FlatList
+            data={filtered}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={renderItem}
+            contentContainerStyle={filtered.length === 0 ? styles.emptyListContainer : undefined}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>
+                No items yet. Identify a plant and pin it to your map to build your collection.
+              </Text>
+            }
+          />
+
+          {/* Pollinator Badge Info */}
+          <Modal
+            visible={badgeOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setBadgeOpen(false)}
+          >
+            <Pressable style={styles.modalBackdrop} onPress={() => setBadgeOpen(false)}>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Pollinator-Friendly</Text>
+                <Text style={styles.modalBody}>
+                  This plant supports bees, butterflies, and other pollinators. BeeLine identifies
+                  pollinator-friendly plants using curated ecological data and plant research.
+                </Text>
+
+                <Pressable style={styles.modalBtn} onPress={() => setBadgeOpen(false)}>
+                  <Text style={styles.modalBtnText}>Got it</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Modal>
+        </>
       )}
     </View>
   );
@@ -334,10 +656,10 @@ const styles = StyleSheet.create({
 
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   error: { color: "#B00020", fontWeight: "700" },
-  meta: { color: "#666", marginTop: 10 },
+  metaOnGreen: { color: "#fff", marginTop: 10 },
 
   emptyListContainer: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 24 },
-  emptyText: { textAlign: "center", color: "#666" },
+  emptyText: { textAlign: "center", color: "#fff", opacity: 0.9 },
 
   card: {
     marginTop: 12,
@@ -378,7 +700,12 @@ const styles = StyleSheet.create({
   detailTitle: { fontSize: 24, fontWeight: "700", marginBottom: 4 },
   detailSubtitle: { fontSize: 16, fontStyle: "italic", color: "#555", marginBottom: 8 },
 
-  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
 
   headerRow: {
     flexDirection: "row",
@@ -391,30 +718,132 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 12,
-    backgroundColor: "#f9b233",
+    backgroundColor: "#f4cf65",
   },
   shareBtnText: { color: "#000", fontWeight: "700" },
 
-  pollinatorDot: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "#F4B400",
+  // Pollinator badge
+  beeIconWrap: {
+    marginLeft: 8,
+    backgroundColor: "#F9B233",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 8,
   },
-  pollinatorBee: { width: 16, height: 16 },
+  beeIcon: {
+    width: 14,
+    height: 14,
+    resizeMode: "contain",
+  },
 
-  pollinatorPill: {
-    marginTop: 12,
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: "#F4B400",
+  sectionCard: {
+    marginTop: 14,
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.08)",
   },
-  pollinatorPillText: { color: "#444", fontWeight: "600" },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#111",
+    marginBottom: 10,
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
+    marginBottom: 8,
+  },
+  label: {
+    fontSize: 13,
+    color: "#555",
+    fontWeight: "700",
+    maxWidth: "45%",
+  },
+  value: {
+    fontSize: 13,
+    color: "#111",
+    fontWeight: "700",
+    textAlign: "right",
+    flex: 1,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(0,0,0,0.08)",
+    marginVertical: 10,
+  },
+  bodyText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: "#333",
+    marginTop: 4,
+  },
+  linkBtn: {
+    marginTop: 12,
+    backgroundColor: "#111",
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignItems: "center",
+  },
+  linkBtnText: {
+    color: "#fff",
+    fontWeight: "900",
+  },
+
+  // Delete button
+  deleteBtn: {
+    marginTop: 12,
+    backgroundColor: "#FDECEC",
+    borderWidth: 1,
+    borderColor: "#E2A3A3",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  deleteBtnText: {
+    color: "#B00020",
+    fontWeight: "900",
+  },
+
+  // Modal tooltip
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    padding: 22,
+  },
+  modalCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: "#7fa96b",
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    marginBottom: 6,
+    color: "#111",
+  },
+  modalBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#333",
+  },
+  modalBtn: {
+    marginTop: 12,
+    backgroundColor: "#F9B233",
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignItems: "center",
+  },
+  modalBtnText: {
+    fontWeight: "800",
+    color: "#111",
+  },
 });

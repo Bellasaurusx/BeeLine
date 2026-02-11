@@ -4,6 +4,7 @@ dotenv.config();
 import express from "express";
 import cors from "cors";
 import { prisma } from "./db";
+import { Prisma } from "@prisma/client";
 import { POLLINATOR_SPECIES } from "./PollinatorSpecies";
 
 function normalizeScientificName(name: string): string {
@@ -17,143 +18,115 @@ function normalizeScientificName(name: string): string {
 
 function normalizeName(s: string): string {
   return (s || "")
-  .toLowerCase()
-  .replace(/[^\p{L}\p{N}\s-]/gu, "")
-  .replace(/\s+/g, " ")
-  .trim();
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function isPollinatorFriendlyName(scientificName?: string, commonName?: string) {
+function getPollinatorSpeciesInfo(scientificName?: string, commonName?: string) {
   const rawSci = (scientificName || "").trim();
   const sci2 = normalizeScientificName(rawSci);
-  const sciNorm = normalizeName(rawSci);
-  const sci2Norm = normalizeName(sci2);
-  const commonNorm = normalizeName(commonName || "");
 
-  const hit =
+  const rawSciNorm = normalizeName(rawSci);
+  const sci2Norm = normalizeName(sci2);
+
+  const info =
     POLLINATOR_SPECIES[rawSci] ||
     POLLINATOR_SPECIES[sci2] ||
-    POLLINATOR_SPECIES[sciNorm] ||
+    POLLINATOR_SPECIES[rawSciNorm] ||
     POLLINATOR_SPECIES[sci2Norm];
 
-  if (hit?.friendly === true) return true;
+  if (info) return info;
 
-  for (const [key, val] of Object.entries(POLLINATOR_SPECIES)) {
-    if (val?.friendly !== true) continue;
-    const k = normalizeName(key);
-
-    if (k && (k === sciNorm || k === sci2Norm || (commonNorm && k === commonNorm))) {
-      return true;
+  const commonNorm = normalizeName(commonName || "");
+  if (commonNorm) {
+    for (const [key, val] of Object.entries(POLLINATOR_SPECIES)) {
+      if (normalizeName(key) === commonNorm) return val;
     }
   }
 
-  return false;
+  return null;
 }
 
 const app = express();
+
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
-app.get("/health", (_req, res) => {
-    res.json({ status: "ok" });
-});
-
-app.get("/api/db-health", async (_req, res) => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    res.json({ db: "ok" });
-  } catch (e: any) {
-    res.status(500).json({ db: "fail", error: String(e?.message || e) });
-   }
-});
-
-
-app.get("/api/plants", async (_req, res) => {
-  const plants = await prisma.plant.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
-  res.json(plants);
-});
-
-app.post("/api/identifications", async (req, res) => {
-  const { plantId, latitude, longitude } = req.body ?? {};
-  if (!plantId) return res.status(400).json({ error: "plantId required" });
-  const ident = await prisma.identification.create({
-    data: { plantId, latitude, longitude },
-  });
-  res.status(201).json(ident);
-});
-
-app.get("/api/identifications", async (_req, res) => {
-  const rows = await prisma.identification.findMany({
-    select: {
-      id: true,
-      latitude: true,
-      longitude: true,
-      plant: { select: { common: true } },
-    },
-    orderBy: { identifiedAt: "desc" },
-    take: 200,
-  });
-  res.json(rows);
+app.get("/", (_req, res) => {
+  res.send("BeeLine API is running");
 });
 
 app.post("/api/pollinator-check", (req, res) => {
   try {
-    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    // Supports BOTH payload styles:
+    // 1) { scientificName, commonName }
+    // 2) { items: [{ scientificName, commonName }, ...] }
+    const body = req.body ?? {};
+    const items = Array.isArray(body.items) ? body.items : null;
 
-    const results = items.map((it: any) => {
-      const scientificName =
-        typeof it?.scientificName === "string" ? it.scientificName : "";
-      const commonName = typeof it?.commonName === "string" ? it.commonName : "";
+    if (items) {
+      const results = items.map((it: any) => {
+        const scientificName = (it?.scientificName || "").toString();
+        const commonName = (it?.commonName || "").toString();
+        const info = getPollinatorSpeciesInfo(scientificName, commonName);
 
-      return {
-        scientificName,
-        pollinatorFriendly: isPollinatorFriendlyName(scientificName, commonName),
-      };
+        return {
+          scientificName,
+          commonName,
+          pollinatorFriendly: info ? info.friendly : null,
+          pollinatorNotes: info ? info.notes : null,
+          pollinatorData: info ? info : null,
+        };
+      });
+
+      return res.json({ results });
+    }
+
+    const { scientificName, commonName } = body;
+    const info = getPollinatorSpeciesInfo(scientificName, commonName);
+
+    return res.json({
+      pollinatorFriendly: info ? info.friendly : null,
+      pollinatorNotes: info ? info.notes : null,
+      pollinatorData: info ? info : null,
     });
-
-    res.json({ results });
-  } catch (e: any) {
-    res.status(500).json({ error: String(e?.message || e) });
+  } catch (err) {
+    console.error("pollinator-check error", err);
+    return res.status(500).json({ error: "pollinator-check failed" });
   }
 });
 
+
 app.post("/api/observations", async (req, res) => {
   try {
-    const {
-      commonName,
-      scientificName,
-      imageUrl,
-      lat,
-      lng,
-      confidence,
-    } = req.body ?? {};
+    const { commonName, scientificName, imageUrl, lat, lng, confidence } = req.body ?? {};
 
-    if (
-      typeof lat !== "number" ||
-      typeof lng !== "number" ||
-      !scientificName
-    ) {
-      return res
-        .status(400)
-        .json({ error: "lat, lng, and scientificName are required" });
+    if (typeof lat !== "number" || typeof lng !== "number" || !scientificName) {
+      return res.status(400).json({ error: "lat, lng, and scientificName are required" });
     }
 
     const rawSci = scientificName.trim();
     const simpleSci = normalizeScientificName(rawSci);
 
     const speciesInfo =
-      POLLINATOR_SPECIES[rawSci] || POLLINATOR_SPECIES[simpleSci];
+      getPollinatorSpeciesInfo(rawSci, commonName) || getPollinatorSpeciesInfo(simpleSci, commonName);
 
     const isPollinator = speciesInfo?.friendly ?? null;
     const pollinatorNotes = speciesInfo?.notes ?? null;
 
+    const pollinatorData =
+      speciesInfo
+        ? (speciesInfo as unknown as Prisma.InputJsonValue)
+        : Prisma.DbNull;
+
+
+
     const R = 0.0005;
     const existing = await prisma.observation.findFirst({
       where: {
-        scientificName,
+        scientificName: rawSci,
         lat: { gte: lat - R, lte: lat + R },
         lng: { gte: lng - R, lte: lng + R },
       },
@@ -171,33 +144,36 @@ app.post("/api/observations", async (req, res) => {
         lat,
         lng,
         commonName: commonName || null,
-        scientificName,
+        scientificName: rawSci,
         imageUrl: imageUrl || null,
-        confidence:
-          typeof confidence === "number" ? confidence : null,
+        confidence: typeof confidence === "number" ? confidence : null,
         pollinatorFriendly: isPollinator,
       },
     });
 
     let plant = await prisma.plant.findFirst({
-      where: { scientific: scientificName },
+      where: { scientific: rawSci },
     });
 
     if (!plant) {
       plant = await prisma.plant.create({
         data: {
-          common: commonName || scientificName,
-          scientific: scientificName,
+          common: commonName || rawSci,
+          scientific: rawSci,
           pollinatorFriendly: isPollinator,
           pollinatorNotes,
+          pollinatorData,
         },
       });
-    } else if (plant.pollinatorFriendly === null) {
+    } else {
       plant = await prisma.plant.update({
         where: { id: plant.id },
         data: {
-          pollinatorFriendly: isPollinator,
-          pollinatorNotes,
+          common: plant.common || commonName || rawSci,
+          pollinatorFriendly: plant.pollinatorFriendly ?? isPollinator,
+          pollinatorNotes: plant.pollinatorNotes ?? pollinatorNotes,
+          pollinatorData:
+            (plant.pollinatorData as any) ?? (pollinatorData == null ? undefined : pollinatorData),
         },
       });
     }
@@ -214,12 +190,11 @@ app.post("/api/observations", async (req, res) => {
       duplicate: false,
       observation,
       identification,
+      plant,
     });
   } catch (err: any) {
     console.error("POST /api/observations error", err);
-    return res
-      .status(500)
-      .json({ error: "Failed to save observation/identification" });
+    return res.status(500).json({ error: "Failed to save observation/identification" });
   }
 });
 
@@ -227,73 +202,104 @@ app.get("/api/observations", async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 200, 500);
 
+    const sort = typeof req.query.sort === "string" ? req.query.sort : "newest";
+    const orderBy =
+      sort === "oldest" ? ({ createdAt: "asc" } as const) : ({ createdAt: "desc" } as const);
+
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
-    const onlyWithPhotos = req.query.onlyWithPhotos === "true";
-    const sort = req.query.sort === "oldest" ? "oldest" : "newest";
 
-    const minLat = req.query.minLat ? Number(req.query.minLat) : null;
-    const maxLat = req.query.maxLat ? Number(req.query.maxLat) : null;
-    const minLng = req.query.minLng ? Number(req.query.minLng) : null;
-    const maxLng = req.query.maxLng ? Number(req.query.maxLng) : null;
-
-    const where: any = {};
-
-    if (onlyWithPhotos) {
-      where.imageUrl = { not: null };
-    }
-
-    if (q) {
-      where.OR = [
-        { commonName: { contains: q, mode: "insensitive" } },
-        { scientificName: { contains: q, mode: "insensitive" } },
-      ];
-    }
-
-    if (
-      minLat !== null &&
-      maxLat !== null &&
-      minLng !== null &&
-      maxLng !== null &&
-      Number.isFinite(minLat) &&
-      Number.isFinite(maxLat) &&
-      Number.isFinite(minLng) &&
-      Number.isFinite(maxLng)
-    ) {
-      where.lat = { gte: minLat, lte: maxLat };
-      where.lng = { gte: minLng, lte: maxLng };
-    }
-
-    const observations = await prisma.observation.findMany({
-      where,
+    const args: Prisma.ObservationFindManyArgs = {
+      orderBy,
       take: limit,
-      orderBy: sort === "oldest" ? { createdAt: "asc" } : { createdAt: "desc" },
-      select: {
-        id: true,
-        lat: true,
-        lng: true,
-        commonName: true,
-        scientificName: true,
-        imageUrl: true,
-        confidence: true,
-        pollinatorFriendly: true,
-        createdAt: true,
-      },
+      ...(q
+        ? {
+            where: {
+              OR: [
+                { commonName: { contains: q, mode: "insensitive" } },
+                { scientificName: { contains: q, mode: "insensitive" } },
+              ],
+            },
+          }
+        : {}),
+    };
+
+    const rows = await prisma.observation.findMany(args);
+
+    const scientificList = Array.from(
+      new Set(rows.map((r) => (r.scientificName || "").trim()).filter(Boolean))
+    );
+
+    const plants = scientificList.length
+      ? await prisma.plant.findMany({
+          where: { scientific: { in: scientificList } },
+          select: {
+            scientific: true,
+            pollinatorFriendly: true,
+            pollinatorNotes: true,
+            pollinatorData: true,
+          },
+        })
+      : [];
+
+    const plantBySci = new Map(plants.map((p) => [p.scientific, p]));
+
+    const merged = rows.map((r) => {
+      const p = plantBySci.get((r.scientificName || "").trim());
+      return {
+        ...r,
+        pollinatorFriendly: r.pollinatorFriendly ?? p?.pollinatorFriendly ?? null,
+        pollinatorNotes: p?.pollinatorNotes ?? null,
+        pollinatorData: p?.pollinatorData ?? null,
+      };
     });
 
-    res.json(observations);
+    return res.json(merged);
   } catch (err) {
     console.error("GET /api/observations error", err);
-    res.status(500).json({ error: "Failed to fetch observations" });
+    return res.status(500).json({ error: "Failed to load observations" });
+  }
+});
+app.delete("/api/observations/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+
+    await prisma.observation.delete({ where: { id } });
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /api/observations/:id error", err);
+    return res.status(500).json({ error: "Failed to delete pin" });
   }
 });
 
+
+app.get("/api/plants/by-scientific", async (req, res) => {
+  try {
+    const name = typeof req.query.name === "string" ? req.query.name.trim() : "";
+    if (!name) return res.status(400).json({ error: "name is required" });
+
+    const raw = name;
+    const simple = normalizeScientificName(raw);
+
+    const plant =
+      (await prisma.plant.findFirst({ where: { scientific: raw } })) ||
+      (await prisma.plant.findFirst({ where: { scientific: simple } }));
+
+    if (!plant) return res.status(404).json({ error: "Plant not found" });
+
+    return res.json(plant);
+  } catch (err) {
+    console.error("GET /api/plants/by-scientific error", err);
+    return res.status(500).json({ error: "Failed to load plant" });
+  }
+});
 app.get("/api/tips", async (req, res) => {
   try {
-    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const limit = Math.min(Number(req.query.limit) || 365, 1000);
 
     const tips = await prisma.tip.findMany({
-      orderBy: { createdAt: "desc" },
       take: limit,
+      orderBy: { createdAt: "desc" },
       select: {
         id: true,
         name: true,
@@ -304,15 +310,14 @@ app.get("/api/tips", async (req, res) => {
       },
     });
 
-    res.json(tips);
+    return res.json(tips);
   } catch (err) {
     console.error("GET /api/tips error", err);
-    res.status(500).json({ error: "Failed to fetch tips" });
+    return res.status(500).json({ error: "Failed to fetch tips" });
   }
 });
-
-const PORT = Number(process.env.PORT) || 3000;
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`API running on http://0.0.0.0:${PORT}`);
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+app.listen(PORT, () => {
+  console.log(`BeeLine API listening on port ${PORT}`);
 });
+

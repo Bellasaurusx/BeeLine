@@ -13,6 +13,7 @@ model Plant {
   scientific      String
   pollinatorFriendly Boolean?     
   pollinatorNotes   String?
+  pollinatorData  Json? @db.JsonB
   createdAt       DateTime         @default(now())
   identifications Identification[]
 }

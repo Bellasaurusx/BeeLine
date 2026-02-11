@@ -9,13 +9,17 @@ import {
   Alert,
   StyleSheet,
   Linking,
-} from "react-native"; 
+  Modal,
+  Pressable,
+} from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BackButton from "./components/BackButton";
 import { addNotification } from "../src/utils/notificationsStore";
 import BeeIcon from "../assets/bee_icon.png";
+import { usePins } from "./state/PinsContext";
+
 
 const PLANTNET_API_KEY = process.env.EXPO_PUBLIC_PLANTNET_API_KEY;
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
@@ -32,7 +36,10 @@ async function attachPollinatorFlags(enriched) {
   try {
     const items = enriched.map((x) => ({
       scientificName: x.scientificName,
-      commonName: x.commonName || (Array.isArray(x.commonNames) ? x.commonNames[0] : "") || "",
+      commonName:
+        x.commonName ||
+        (Array.isArray(x.commonNames) ? x.commonNames[0] : "") ||
+        "",
     }));
 
     const res = await fetch(`${API_URL}/api/pollinator-check`, {
@@ -187,7 +194,10 @@ async function enrichWithINat(scientificName) {
 }
 
 export default function IdentifyScreen() {
+
   const insets = useSafeAreaInsets();
+  const { upsertPin, fetchPins } = usePins();
+
 
   const [imageAsset, setImageAsset] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -196,6 +206,9 @@ export default function IdentifyScreen() {
   const [coords, setCoords] = useState(null);
   const [savingId, setSavingId] = useState(null);
   const [saveError, setSaveError] = useState(null);
+
+  // Pollinator badge tooltip modal
+  const [badgeOpen, setBadgeOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -327,7 +340,7 @@ export default function IdentifyScreen() {
       setSavingId(item.scientificName);
       setSaveError(null);
 
-      if (item.score < 0.3) {
+      if (item.score < 0.1) {
         Alert.alert(
           "Low confidence",
           "This match is pretty uncertain. Try another photo or angle before pinning."
@@ -362,6 +375,13 @@ export default function IdentifyScreen() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to save pin");
+
+      // Keep collection + map in sync immediately
+      if (data && typeof data === "object") {
+        if (data?.id) upsertPin(data);
+        else if (data?.observation?.id) upsertPin(data.observation);
+        else fetchPins();
+      }
 
       if (data.duplicate) {
         Alert.alert("Already pinned", "A pin for this plant already exists near here.");
@@ -400,6 +420,9 @@ export default function IdentifyScreen() {
   const openWiki = (url) => {
     if (url) Linking.openURL(url);
   };
+
+  const canSubmit =
+    badgeOpen === false; 
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
@@ -443,7 +466,7 @@ export default function IdentifyScreen() {
       <FlatList
         data={results}
         keyExtractor={(item, idx) => `${item.scientificName}-${idx}`}
-        contentContainerStyle={{ paddingBottom: 120 }} 
+        contentContainerStyle={{ paddingBottom: 120 }}
         renderItem={({ item }) => {
           const img =
             item.photo ||
@@ -476,15 +499,21 @@ export default function IdentifyScreen() {
                   <Text style={styles.commonName}>{common}</Text>
 
                   {item.pollinatorFriendly === true && (
-                    <View style={styles.badge}>
-                      <Image source={BeeIcon} style={styles.badgeIcon} />
-                    </View>
+                    <TouchableOpacity
+                      onPress={() => setBadgeOpen(true)}
+                      hitSlop={12}
+                      style={styles.beeIconWrap}
+                    >
+                      <Image source={BeeIcon} style={styles.beeIcon} />
+                    </TouchableOpacity>
                   )}
                 </View>
+
                 <Text style={styles.sciName}>{sci}</Text>
                 <Text style={styles.confidence}>
                   Confidence: {toPercent(item.score)}
                 </Text>
+
                 <View style={styles.cardBtns}>
                   <TouchableOpacity
                     style={styles.cardBtn}
@@ -528,6 +557,29 @@ export default function IdentifyScreen() {
         }
       />
 
+      {/* Pollinator Badge Info */}
+      <Modal
+        visible={badgeOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBadgeOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setBadgeOpen(false)}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Pollinator-Friendly</Text>
+            <Text style={styles.modalBody}>
+              This plant supports bees, butterflies, and other pollinators. BeeLine
+              identifies pollinator-friendly plants using curated ecological data and
+              plant research.
+            </Text>
+
+            <Pressable style={styles.modalBtn} onPress={() => setBadgeOpen(false)}>
+              <Text style={styles.modalBtnText}>Got it</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
       <BackButton />
     </View>
   );
@@ -535,7 +587,13 @@ export default function IdentifyScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#4c6233", padding: 16 },
-  h1: { fontSize: 22, fontWeight: "700", color: "#fff", marginTop: 8, marginBottom: 12 },
+  h1: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#fff",
+    marginTop: 8,
+    marginBottom: 12,
+  },
   row: { flexDirection: "row", gap: 12, marginBottom: 12 },
   btn: {
     backgroundColor: "#F9B233",
@@ -545,14 +603,17 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.5 },
   btnText: { fontWeight: "800" },
-  preview: { width: "100%",
-  height: 220,
-  borderRadius: 12,
-  marginBottom: 12,
-  borderWidth: 4,
-  borderColor: "#7fa96b",},
+  preview: {
+    width: "100%",
+    height: 220,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 4,
+    borderColor: "#7fa96b",
+  },
   subtle: { color: "#fff", marginVertical: 8 },
   loadingRow: { flexDirection: "row", alignItems: "center", marginVertical: 8 },
+
   card: {
     flexDirection: "row",
     gap: 12,
@@ -577,9 +638,11 @@ const styles = StyleSheet.create({
   },
   thumbPlaceholder: { alignItems: "center", justifyContent: "center" },
   thumbText: { fontSize: 10, color: "#fff" },
+
   commonName: { fontSize: 16, fontWeight: "700" },
   sciName: { fontSize: 13, fontStyle: "italic", color: "#333", marginTop: 2 },
   confidence: { fontSize: 12, color: "#555", marginTop: 4 },
+
   cardBtns: { flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" },
   cardBtn: {
     backgroundColor: "#111",
@@ -597,21 +660,64 @@ const styles = StyleSheet.create({
   },
   cardBtnOutlineText: { color: "#111", fontWeight: "700" },
 
-    titleRow: {
+  titleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 10,
   },
-  badge: {
-  backgroundColor: "#F4B400",
-  padding: 6,
-  borderRadius: 999,
+
+  // Pollinator badge
+  beeIconWrap: {
+  marginLeft: 8,
+  backgroundColor: "#F9B233",
+  width: 28,
+  height: 28,
+  borderRadius: 14,
   alignItems: "center",
   justifyContent: "center",
+},
+
+beeIcon: {
+  width: 14,
+  height: 14,
+  resizeMode: "contain",
+},
+
+  // Modal tooltip
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    padding: 22,
   },
-  badgeIcon: {
-    width: 16,
-    height: 16,
-    resizeMode: "contain",
+  modalCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: "#7fa96b",
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    marginBottom: 6,
+    color: "#111",
+  },
+  modalBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#333",
+  },
+  modalBtn: {
+    marginTop: 12,
+    backgroundColor: "#F9B233",
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignItems: "center",
+  },
+  modalBtnText: {
+    fontWeight: "800",
+    color: "#111",
   },
 });

@@ -1,19 +1,18 @@
-// app/signup.jsx
 import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   Image,
   StyleSheet,
   Alert,
+  Pressable,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 
 import { auth } from "../FirebaseConfig";
-import Logo from "../assets/Logo.png";
+import Logo from "../assets/HD_SPLASH_TRANS.png";
 
 export default function SignUp() {
   const router = useRouter();
@@ -23,6 +22,13 @@ export default function SignUp() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const canSubmit =
+    name.trim().length > 0 &&
+    email.trim().length > 0 &&
+    password.length >= 6 &&
+    confirmPassword.length >= 6 &&
+    password === confirmPassword;
 
   const handleSignUp = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -67,123 +73,177 @@ export default function SignUp() {
 
       <Text style={styles.title}>Create your BeeLine account</Text>
 
+      {/* Inputs */}
       <TextInput
         placeholder="Name"
-        placeholderTextColor="#333"
+        placeholderTextColor={stylesVars.placeholder}
         style={styles.input}
         value={name}
         onChangeText={setName}
+        editable={!loading}
       />
 
       <TextInput
         placeholder="Email"
-        placeholderTextColor="#333"
+        placeholderTextColor={stylesVars.placeholder}
         style={styles.input}
         keyboardType="email-address"
         autoCapitalize="none"
         value={email}
         onChangeText={setEmail}
+        editable={!loading}
       />
 
       <TextInput
         placeholder="Password"
-        placeholderTextColor="#333"
+        placeholderTextColor={stylesVars.placeholder}
         secureTextEntry
         style={styles.input}
         value={password}
         onChangeText={setPassword}
+        editable={!loading}
       />
 
       <TextInput
         placeholder="Confirm Password"
-        placeholderTextColor="#333"
+        placeholderTextColor={stylesVars.placeholder}
         secureTextEntry
         style={styles.input}
         value={confirmPassword}
         onChangeText={setConfirmPassword}
+        editable={!loading}
       />
 
-      <TouchableOpacity
-        style={[styles.signupBtn, loading && styles.btnDisabled]}
+      {/* Primary Sign Up Button */}
+      <Pressable
         onPress={handleSignUp}
-        disabled={loading}
+        disabled={loading || !canSubmit}
+        style={({ pressed }) => [
+          styles.pillBtnPrimary,
+          (loading || !canSubmit) && styles.disabled,
+          pressed && !loading && canSubmit && styles.pillPressed,
+        ]}
       >
-        <Text style={styles.signupText}>
+        <Text style={styles.pillPrimaryText}>
           {loading ? "Creating..." : "Sign up"}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
 
       {/* “Already have an account?” link */}
-      <TouchableOpacity
-        style={styles.loginLink}
+      <Pressable
+        style={styles.linkWrap}
         onPress={() => router.push("/login")}
         disabled={loading}
       >
-        <Text style={styles.loginLinkText}>Already have an account? Log in</Text>
-      </TouchableOpacity>
+        <Text style={styles.linkText}>
+          Already have an account?{" "}
+          <Text style={styles.linkTextBold}>Log in</Text>
+        </Text>
+      </Pressable>
 
       {/* BeeLine Back Button (bottom-right) */}
-      <TouchableOpacity
-        style={styles.backButton}
+      <Pressable
+        style={({ pressed }) => [
+          styles.backButton,
+          pressed && !loading && styles.backPressed,
+          loading && styles.disabled,
+        ]}
         onPress={() => router.push("/login")}
         disabled={loading}
       >
         <Text style={styles.backArrow}>←</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
 
+const stylesVars = {
+  bg: "#4c6233",
+  inputBg: "#88a06b",
+  inputBorder: "#2c3e20",
+  yellow: "#f4cf65",
+  textDark: "#111",
+  linkYellow: "#f4cf65",
+  placeholder: "#2c3e20",
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#4c6233",
+    backgroundColor: stylesVars.bg,
     alignItems: "center",
-    paddingTop: 60,
+    paddingTop: 70,
+    paddingHorizontal: 18,
   },
+
   logo: {
-    width: 160,
-    height: 120,
+    width: 220,
+    height: 160,
     resizeMode: "contain",
-    marginBottom: 20,
+    marginBottom: 18,
   },
+
   title: {
     color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 20,
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 18,
   },
+
   input: {
-    width: "70%",
-    backgroundColor: "#88a06b",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    marginBottom: 12,
-    borderRadius: 4,
-    color: "#000",
+    width: "86%",
+    backgroundColor: stylesVars.inputBg,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#2c3e20",
-  },
-  signupBtn: {
-    backgroundColor: "#f4cf65",
-    paddingVertical: 10,
-    paddingHorizontal: 35,
-    borderRadius: 20,
-    marginTop: 10,
-  },
-  btnDisabled: {
-    opacity: 0.6,
-  },
-  signupText: {
+    borderColor: stylesVars.inputBorder,
+
+    // readability 
+    color: "#1a1a1a",
+    fontSize: 16,
     fontWeight: "600",
-    color: "#000",
+
+    marginBottom: 12,
   },
-  loginLink: {
-    marginTop: 20,
+
+  // Primary pill 
+  pillBtnPrimary: {
+    width: "86%",
+    backgroundColor: stylesVars.yellow,
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
   },
-  loginLinkText: {
-    color: "#f4cf65",
-    fontSize: 14,
+  pillPrimaryText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: stylesVars.textDark,
+  },
+
+  // Press feedback
+  pillPressed: {
+    transform: [{ scale: 0.985 }],
+    opacity: 0.95,
+  },
+  disabled: {
+    opacity: 0.55,
+  },
+
+  // Link text 
+  linkWrap: {
+    marginTop: 14,
+    paddingVertical: 8,
+  },
+  linkText: {
+    color: stylesVars.linkYellow,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  linkTextBold: {
+    fontWeight: "700",
   },
 
   /* Back Button / BeeLine style */
@@ -191,7 +251,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 40,
     right: 30,
-    backgroundColor: "#f4cf65",
+    backgroundColor: stylesVars.yellow,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -202,6 +262,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+  },
+  backPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.95,
   },
   backArrow: {
     fontSize: 26,
