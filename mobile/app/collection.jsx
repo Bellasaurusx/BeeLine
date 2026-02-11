@@ -18,15 +18,16 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BeeIcon from "../assets/bee_icon.png";
 import BackButton from "./components/BackButton";
+import { usePins } from "./state/PinsContext";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function CollectionScreen() {
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { pins: items, loading, error, fetchPins, deletePin } = usePins();
+
+  // Local UI state 
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [onlyWithPhotos, setOnlyWithPhotos] = useState(false);
@@ -47,7 +48,7 @@ export default function CollectionScreen() {
   function cleanSciName(name = "") {
     return name
       .trim()
-      .replace(/\s+[A-Z][a-z]*\.?$/g, "") 
+      .replace(/\s+[A-Z][a-z]*\.?$/g, "")
       .split(/\s+/)
       .slice(0, 2)
       .join(" ");
@@ -68,7 +69,8 @@ export default function CollectionScreen() {
     if (!results.length) return null;
 
     const exact =
-      results.find((t) => (t.name || "").toLowerCase() === cleaned.toLowerCase()) || results[0];
+      results.find((t) => (t.name || "").toLowerCase() === cleaned.toLowerCase()) ||
+      results[0];
 
     if (!exact) return null;
 
@@ -100,33 +102,40 @@ export default function CollectionScreen() {
   }
 
   // ----------------------------
-  // Load collection
+  // Load collection (from shared store)
   // ----------------------------
   useEffect(() => {
-    async function run() {
-      try {
-        setLoading(true);
-        setError("");
+    fetchPins();
+  }, [fetchPins]);
 
-        if (!API_URL) {
-          throw new Error("Missing EXPO_PUBLIC_API_URL");
-        }
+  // ----------------------------
+  // Delete pin (shared store + DB)
+  // ----------------------------
+  const confirmDelete = (item) => {
+    if (!item?.id) return;
 
-        const res = await fetch(`${API_URL}/api/observations?limit=300&sort=newest`);
-        if (!res.ok) throw new Error("Failed to load collection");
+    const title = item.commonName || item.scientificName || "this plant";
 
-        const data = await res.json();
-        setItems(Array.isArray(data) ? data : []);
-      } catch (e) {
-        console.error(e);
-        setError("Could not load your collection. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    run();
-  }, []);
+    Alert.alert(
+      "Delete this pin?",
+      `This will remove ${title} from your collection and map.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deletePin(item.id);
+              setSelectedItem(null);
+            } catch (e) {
+              Alert.alert("Delete failed", e?.message || "Could not delete this pin.");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -150,7 +159,7 @@ export default function CollectionScreen() {
         if (!cancelled) setInatLoading(false);
       }
 
-      // Pollinator status + notes 
+      // Pollinator status + notes
       try {
         setPolliLoading(true);
         setPolli(null);
@@ -192,7 +201,7 @@ export default function CollectionScreen() {
   // Filter + sort list
   // ----------------------------
   const filtered = useMemo(() => {
-    let result = [...items];
+    let result = [...(items || [])];
 
     if (onlyWithPhotos) {
       result = result.filter((x) => !!x?.imageUrl);
@@ -323,7 +332,6 @@ export default function CollectionScreen() {
     const genus = extractGenusFromName(selectedItem.scientificName);
     const polliData = selectedItem?.pollinatorData || null;
 
-
     const pollinatorLabel = polliLoading
       ? "Loading…"
       : polli?.pollinatorFriendly === true
@@ -334,10 +342,10 @@ export default function CollectionScreen() {
 
     return (
       <ScrollView
-      style={[styles.container, { paddingTop: insets.top + 12 }]}
-      contentContainerStyle={{ paddingBottom: 40 }}
-      showsVerticalScrollIndicator={false}
-    >
+        style={[styles.container, { paddingTop: insets.top + 12 }]}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+      >
         <BackButton />
         <TouchableOpacity onPress={closeDetail} style={styles.backLink}>
           <Text style={styles.backLinkText}>← Back to collection</Text>
@@ -345,11 +353,7 @@ export default function CollectionScreen() {
 
         <View style={styles.detailCard}>
           {!!selectedItem.imageUrl && (
-            <Image
-              source={{ uri: selectedItem.imageUrl }}
-              style={styles.detailImage}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: selectedItem.imageUrl }} style={styles.detailImage} resizeMode="cover" />
           )}
 
           <View style={styles.titleRow}>
@@ -360,11 +364,15 @@ export default function CollectionScreen() {
           {!!subtitle && <Text style={styles.detailSubtitle}>{subtitle}</Text>}
           {!!date && <Text style={styles.meta}>Pinned: {date}</Text>}
           {!!confidence && <Text style={styles.meta}>Confidence: {confidence}</Text>}
+
+          {/* Delete Pin */}
+          <TouchableOpacity onPress={() => confirmDelete(selectedItem)} style={styles.deleteBtn}>
+            <Text style={styles.deleteBtnText}>Delete Pin</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Plant Details</Text>
-
 
           {!!polli?.pollinatorNotes && <Text style={styles.bodyText}>{polli.pollinatorNotes}</Text>}
 
@@ -405,6 +413,7 @@ export default function CollectionScreen() {
                 : "—"}
             </Text>
           </View>
+
           {polliData ? (
             <>
               <View style={styles.divider} />
@@ -474,12 +483,8 @@ export default function CollectionScreen() {
             </>
           ) : null}
 
-
           {!!inat?.wikiUrl && (
-            <TouchableOpacity
-              style={styles.linkBtn}
-              onPress={() => Linking.openURL(inat.wikiUrl)}
-            >
+            <TouchableOpacity style={styles.linkBtn} onPress={() => Linking.openURL(inat.wikiUrl)}>
               <Text style={styles.linkBtnText}>Open Wikipedia</Text>
             </TouchableOpacity>
           )}
@@ -546,7 +551,12 @@ export default function CollectionScreen() {
         style={[styles.filterToggle, onlyWithPhotos ? styles.filterToggleActive : null]}
         onPress={() => setOnlyWithPhotos((v) => !v)}
       >
-        <Text style={[styles.filterToggleText, onlyWithPhotos ? styles.filterToggleTextActive : null]}>
+        <Text
+          style={[
+            styles.filterToggleText,
+            onlyWithPhotos ? styles.filterToggleTextActive : null,
+          ]}
+        >
           Only show items with photos
         </Text>
       </TouchableOpacity>
@@ -728,7 +738,6 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
   },
 
-
   sectionCard: {
     marginTop: 14,
     backgroundColor: "#fff",
@@ -783,6 +792,21 @@ const styles = StyleSheet.create({
   },
   linkBtnText: {
     color: "#fff",
+    fontWeight: "900",
+  },
+
+  // Delete button
+  deleteBtn: {
+    marginTop: 12,
+    backgroundColor: "#FDECEC",
+    borderWidth: 1,
+    borderColor: "#E2A3A3",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  deleteBtnText: {
+    color: "#B00020",
     fontWeight: "900",
   },
 

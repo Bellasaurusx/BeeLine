@@ -1,6 +1,10 @@
 import { Slot } from "expo-router";
+import { PinsProvider } from "./state/PinsContext";
 
 export default function RootLayout() {
-
-  return <Slot />;
+  return (
+    <PinsProvider>
+      <Slot />
+    </PinsProvider>
+  );
 }

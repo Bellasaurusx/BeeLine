@@ -174,6 +174,19 @@ export default function MapScreen() {
         margin-top:2px;
         color:#333;
       }
+      /* Popup image */
+      .popup-img {
+        width: 100%;
+        height: 110px;
+        border-radius: 10px;
+        object-fit: cover;
+        display: block;
+        margin: 8px 0 6px 0;
+        background: #eee;
+      }
+      .popup-wrap {
+        max-width: 220px;
+      }
     </style>
   </head>
   <body>
@@ -287,12 +300,18 @@ export default function MapScreen() {
           : "";
 
         return (
-          '<div class="popup-title-row">' +
-            '<strong>' + name + '</strong>' +
-            badge +
-          '</div>' +
-          (sci ? '<small class="popup-sci"><em>' + sci + '</em></small>' : "")
+          '<div class="popup-wrap">' +
+            (p.imageUrl
+              ? '<img class="popup-img" src="' + escapeHtml(p.imageUrl) + '" />'
+              : "") +
+            '<div class="popup-title-row">' +
+              '<strong>' + name + '</strong>' +
+              badge +
+            '</div>' +
+            (sci ? '<small class="popup-sci"><em>' + sci + '</em></small>' : "") +
+          '</div>'
         );
+
       }
 
       window._setPins = function (payload) {

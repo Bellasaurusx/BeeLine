@@ -60,7 +60,31 @@ app.get("/", (_req, res) => {
 
 app.post("/api/pollinator-check", (req, res) => {
   try {
-    const { scientificName, commonName } = req.body ?? {};
+    // Supports BOTH payload styles:
+    // 1) { scientificName, commonName }
+    // 2) { items: [{ scientificName, commonName }, ...] }
+    const body = req.body ?? {};
+    const items = Array.isArray(body.items) ? body.items : null;
+
+    if (items) {
+      const results = items.map((it: any) => {
+        const scientificName = (it?.scientificName || "").toString();
+        const commonName = (it?.commonName || "").toString();
+        const info = getPollinatorSpeciesInfo(scientificName, commonName);
+
+        return {
+          scientificName,
+          commonName,
+          pollinatorFriendly: info ? info.friendly : null,
+          pollinatorNotes: info ? info.notes : null,
+          pollinatorData: info ? info : null,
+        };
+      });
+
+      return res.json({ results });
+    }
+
+    const { scientificName, commonName } = body;
     const info = getPollinatorSpeciesInfo(scientificName, commonName);
 
     return res.json({
@@ -73,6 +97,7 @@ app.post("/api/pollinator-check", (req, res) => {
     return res.status(500).json({ error: "pollinator-check failed" });
   }
 });
+
 
 app.post("/api/observations", async (req, res) => {
   try {
@@ -234,6 +259,19 @@ app.get("/api/observations", async (req, res) => {
     return res.status(500).json({ error: "Failed to load observations" });
   }
 });
+app.delete("/api/observations/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+
+    await prisma.observation.delete({ where: { id } });
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /api/observations/:id error", err);
+    return res.status(500).json({ error: "Failed to delete pin" });
+  }
+});
+
 
 app.get("/api/plants/by-scientific", async (req, res) => {
   try {
@@ -255,7 +293,29 @@ app.get("/api/plants/by-scientific", async (req, res) => {
     return res.status(500).json({ error: "Failed to load plant" });
   }
 });
+app.get("/api/tips", async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 365, 1000);
 
+    const tips = await prisma.tip.findMany({
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        insight: true,
+        tip: true,
+        imageUrl: true,
+        createdAt: true,
+      },
+    });
+
+    return res.json(tips);
+  } catch (err) {
+    console.error("GET /api/tips error", err);
+    return res.status(500).json({ error: "Failed to fetch tips" });
+  }
+});
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 app.listen(PORT, () => {
   console.log(`BeeLine API listening on port ${PORT}`);

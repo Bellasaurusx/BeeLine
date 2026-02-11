@@ -18,6 +18,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BackButton from "./components/BackButton";
 import { addNotification } from "../src/utils/notificationsStore";
 import BeeIcon from "../assets/bee_icon.png";
+import { usePins } from "./state/PinsContext";
+
 
 const PLANTNET_API_KEY = process.env.EXPO_PUBLIC_PLANTNET_API_KEY;
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
@@ -194,6 +196,8 @@ async function enrichWithINat(scientificName) {
 export default function IdentifyScreen() {
 
   const insets = useSafeAreaInsets();
+  const { upsertPin, fetchPins } = usePins();
+
 
   const [imageAsset, setImageAsset] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -336,7 +340,7 @@ export default function IdentifyScreen() {
       setSavingId(item.scientificName);
       setSaveError(null);
 
-      if (item.score < 0.3) {
+      if (item.score < 0.1) {
         Alert.alert(
           "Low confidence",
           "This match is pretty uncertain. Try another photo or angle before pinning."
@@ -371,6 +375,13 @@ export default function IdentifyScreen() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to save pin");
+
+      // Keep collection + map in sync immediately
+      if (data && typeof data === "object") {
+        if (data?.id) upsertPin(data);
+        else if (data?.observation?.id) upsertPin(data.observation);
+        else fetchPins();
+      }
 
       if (data.duplicate) {
         Alert.alert("Already pinned", "A pin for this plant already exists near here.");
