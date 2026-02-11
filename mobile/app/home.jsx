@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { useFocusEffect } from "@react-navigation/native";
 import { getUnread } from "../src/utils/notificationsStore";
+
+import { useLeftHand } from "./LeftHandContext";
 
 import MapIcon from "../assets/mapicon.png";
 import CamIcon from "../assets/cameraicon.png";
@@ -26,6 +27,7 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export default function Home() {
   const router = useRouter();
+  const { leftHandMode } = useLeftHand();
 
   const [dailyFact, setDailyFact] = useState("Loading today's fact...");
   const [hasUnread, setHasUnread] = useState(false);
@@ -56,18 +58,24 @@ export default function Home() {
       try {
         const today = new Date().toISOString().slice(0, 10);
 
-        const [cachedJson, fetchedAtStr, savedId, savedDate] = await Promise.all([
-          AsyncStorage.getItem(TIPS_KEY),
-          AsyncStorage.getItem(TIPS_FETCHED_AT_KEY),
-          AsyncStorage.getItem(TIP_OF_DAY_ID_KEY),
-          AsyncStorage.getItem(TIP_OF_DAY_DATE_KEY),
-        ]);
+        const [cachedJson, fetchedAtStr, savedId, savedDate] =
+          await Promise.all([
+            AsyncStorage.getItem(TIPS_KEY),
+            AsyncStorage.getItem(TIPS_FETCHED_AT_KEY),
+            AsyncStorage.getItem(TIP_OF_DAY_ID_KEY),
+            AsyncStorage.getItem(TIP_OF_DAY_DATE_KEY),
+          ]);
 
         let tips = cachedJson ? JSON.parse(cachedJson) : [];
         const fetchedAt = fetchedAtStr ? Number(fetchedAtStr) : 0;
         const isFresh = fetchedAt && Date.now() - fetchedAt < ONE_DAY_MS;
 
-        if (savedId && savedDate === today && Array.isArray(tips) && tips.length) {
+        if (
+          savedId &&
+          savedDate === today &&
+          Array.isArray(tips) &&
+          tips.length
+        ) {
           const found = tips.find((t) => String(t.id) === String(savedId));
           if (found && !cancelled) {
             setDailyFact(found.tip || found.insight || "Check out today's tip.");
@@ -107,7 +115,7 @@ export default function Home() {
           setDailyFact(chosen.tip || chosen.insight || "Check out today's tip.");
         }
       } catch (e) {
-        console.log("Daily fact error:", e);
+        console.log("Daily tip error:", e);
         if (!cancelled) setDailyFact("Bees fly about 20 mph.");
       }
     }
@@ -218,11 +226,13 @@ logo: {
     marginBottom: 25,
     width: "90%",
   },
+
   factText: {
     fontSize: 16,
     fontWeight: "700",
     textAlign: "center",
   },
+
   factSub: {
     textAlign: "center",
     marginTop: 4,
@@ -233,9 +243,11 @@ logo: {
     alignItems: "center",
     gap: 25,
   },
+
   tileWrapper: {
     alignItems: "center",
   },
+
   tileImage: {
     width: 200,
     height: 150,
@@ -243,6 +255,7 @@ logo: {
     borderWidth: 3,
     borderColor: "#7fa96b",
   },
+
   tileLabel: {
     color: "#fff",
     marginTop: 6,
@@ -260,6 +273,15 @@ logo: {
   iconItem: {
     alignItems: "center",
   },
+
+  sidebarRight: {
+    right: 20,
+  },
+
+  sidebarLeft: {
+    left: 20,
+  },
+
   iconBtn: {
     backgroundColor: "#F4EBD0",
     width: 54,

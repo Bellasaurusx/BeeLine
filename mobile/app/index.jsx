@@ -7,6 +7,9 @@ import Bkg from "../assets/bkg.png";
 
 const KEY = "beeline:onboardingSeen:v1";
 
+// ✅ TESTING MODE: force onboarding every app launch
+const FORCE_ONBOARDING_FOR_TESTING = true;
+
 export default function Splash() {
   const router = useRouter();
 

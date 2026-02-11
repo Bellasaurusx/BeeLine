@@ -5,13 +5,35 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { signOut } from "firebase/auth";
 
 import ProfilePic from "../assets/profile.jpg";
+import { useLeftHand } from "./LeftHandContext";
 
 export default function Profile() {
   const router = useRouter();
+  const { leftHandMode, toggleLeftHandMode } = useLeftHand();
+
+  const handleLogout = () => {
+    Alert.alert("Log out", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await signOut(auth);
+            router.replace("/login");
+          } catch (err) {
+            Alert.alert("Error", err?.message || "Logout failed.");
+          }
+        },
+      },
+    ]);
+  };
 
   const handleLeftHandMode = () => {
     console.log("Left hand mode pressed");
@@ -40,7 +62,10 @@ export default function Profile() {
 
       {/* Back Button */}
       <TouchableOpacity
-        style={styles.backButton}
+        style={[
+          styles.backButton,
+          leftHandMode ? styles.leftButton : styles.rightButton,
+        ]}
         onPress={() => router.push("/home")}
       >
         <Text style={styles.backArrow}>←</Text>
@@ -98,14 +123,20 @@ const styles = StyleSheet.create({
     borderColor: "#ffffff",
     marginRight: 10,
   },
+  bulletActive: {
+    backgroundColor: "#ffffff",
+  },
   optionText: {
     color: "#ffffff",
     fontSize: 16,
   },
+  logoutText: {
+    color: "#f4cf65",
+    fontWeight: "600",
+  },
   backButton: {
     position: "absolute",
     bottom: 40,
-    right: 30,
     backgroundColor: "#f4cf65",
     width: 56,
     height: 56,
@@ -118,8 +149,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
+  leftButton: { left: 30 },
+  rightButton: { right: 30 },
   backArrow: {
     fontSize: 24,
     color: "#333",
+    fontWeight: "600",
   },
 });
