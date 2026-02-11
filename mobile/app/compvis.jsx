@@ -14,7 +14,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, useRouter } from "expo-router";
-import { useLeftHand } from "./LeftHandContext";
+import { useLeftHand } from "./context/LeftHandContext";
 
 const PLANTNET_API_KEY = "2b10BuvkFTkWr8yTFdYCsSQC";
 const PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";

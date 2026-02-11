@@ -11,7 +11,7 @@ import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 
 import ProfilePic from "../assets/profile.jpg";
-import { useLeftHand } from "./LeftHandContext";
+import { useLeftHand } from "./context/LeftHandContext";
 
 export default function Profile() {
   const router = useRouter();

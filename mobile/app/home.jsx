@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { getUnread } from "../src/utils/notificationsStore";
 
-import { useLeftHand } from "./LeftHandContext";
+import { useLeftHand } from "./context/LeftHandContext";
 
 import MapIcon from "../assets/mapicon.png";
 import CamIcon from "../assets/cameraicon.png";

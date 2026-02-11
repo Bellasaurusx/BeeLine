@@ -18,7 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BeeIcon from "../assets/bee_icon.png";
 import BackButton from "./components/BackButton";
-import { usePins } from "./state/PinsContext";
+import { usePins } from "./context/PinsContext";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 

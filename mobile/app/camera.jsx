@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BackButton from "./components/BackButton";
 import { addNotification } from "../src/utils/notificationsStore";
 import BeeIcon from "../assets/bee_icon.png";
-import { usePins } from "./state/PinsContext";
+import { usePins } from "./context/PinsContext";
 
 
 const PLANTNET_API_KEY = process.env.EXPO_PUBLIC_PLANTNET_API_KEY;
