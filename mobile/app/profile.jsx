@@ -53,10 +53,6 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* Bee Animation */}
-        <View style={styles.animWrap}>
-          <SimpleBeeAnimation />
-        </View>
 
         {/* Preferences */}
         <Text style={styles.sectionTitle}>Preferences</Text>
